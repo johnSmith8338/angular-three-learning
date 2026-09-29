@@ -17,7 +17,7 @@
 
         @if (markerPosition(); as position) {
             <ngt-mesh [position]="position">
-                <ngt-sphere-geometry [args]="[0.03,12,12]" />
+                <ngt-sphere-geometry *args="[0.2,12,12]" />
                 <ngt-mesh-standard-material [color]="'#ff0000'" />
             </ngt-mesh>
         }

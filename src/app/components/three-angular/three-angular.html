@@ -1,12 +1,21 @@
-<ngt-canvas 
-    [camera]="{
-        position:[2,0,3],
-        fov:75
-    }"
->
-    <ng-template canvasContent>
-
-        <app-three-angular-scene />
-
-    </ng-template>
-</ngt-canvas>
+<div class="scene-container">
+    <ngt-canvas 
+        [camera]="{
+            position:[2,0,3],
+            fov:75
+        }"
+    >
+        <ng-template canvasContent>
+    
+            <app-three-angular-scene (screenPositionChange)="onScreenPositionChange($event)" />
+    
+        </ng-template>
+    </ngt-canvas>
+    
+    @if (screenPosition();as position) {
+        <div class="html-marker"
+            [style.left.px]="position[0]"
+            [style.top.px]="position[1]"
+        ></div>
+    }
+</div>

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, signal, viewChild } from '@angular/core';
-import { beforeRender, extend, NgtThreeEvent } from 'angular-three';
+import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, output, signal, viewChild } from '@angular/core';
+import { beforeRender, extend, NgtArgs, NgtThreeEvent } from 'angular-three';
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 
 extend({
@@ -7,12 +7,11 @@ extend({
   BoxGeometry,
   MeshStandardMaterial,
   Group,
-  Vector3
 })
 
 @Component({
   selector: 'app-three-angular-scene',
-  imports: [],
+  imports: [NgtArgs],
   templateUrl: './three-angular-scene.html',
   styleUrl: './three-angular-scene.scss',
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -29,6 +28,12 @@ export class ThreeAngularScene {
   readonly hovered = signal<'left' | 'center' | 'right' | null>(null);
   readonly selected = signal(false);
   readonly markerPosition = signal<[number, number, number] | null>(null);
+  readonly screenPosition = signal<[number, number] | null>(null);
+  readonly cameraRotationSpeed = signal(0.5);
+
+  private cameraAngle = 0;
+
+  readonly screenPositionChange = output<[number, number] | null>();
 
   constructor() {
     // beforeRender(({ delta }) => {
@@ -45,32 +50,32 @@ export class ThreeAngularScene {
     //    */
     // })
 
-    beforeRender(({ camera }) => {
-      camera.lookAt(0, 0, 0)
+    beforeRender(({ camera, size }) => {
+      camera.lookAt(0, 0, 0);
+
+      const position = this.markerPosition();
+      if (!position) return;
+
+      const group = this.groupB().nativeElement;
+      const point = new Vector3(
+        position[0],
+        position[1],
+        position[2]
+      )
+
+      // local groupB to world
+      group.localToWorld(point);
+
+      // world to ndc (normalized device coordinates)
+      point.project(camera);
+
+      // ndc to pixels
+      const x = (point.x + 1) / 2 * size.width;
+      const y = (1 - point.y) / 2 * size.height;
+
+      this.screenPosition.set([x, y]);
+      this.screenPositionChange.emit([x, y]);
     })
-  }
-
-  onPointerOver() {
-    console.log('cube!');
-  }
-
-  onPointerMove(event: unknown) {
-    console.log(event);
-  }
-
-  onClick(event: unknown) {
-    // this.selected.update(v => !v);
-    console.log(event);
-  }
-
-  onCubeClick(event: any) {
-    const point = event.point;
-
-    this.markerPosition.set([
-      point.x,
-      point.y,
-      point.z
-    ])
   }
 
   onCubePointerMove(event: NgtThreeEvent<PointerEvent>) {
@@ -78,34 +83,12 @@ export class ThreeAngularScene {
 
     const group = this.groupB().nativeElement;
 
-    console.log('WORLD:', point.clone());
-
     group.worldToLocal(point);
-
-    console.log('LOCAL GROUP B:', point);
 
     this.markerPosition.set([
       point.x,
       point.y,
       point.z,
     ]);
-  }
-
-  logPositions(): void {
-    const mesh = this.mesh().nativeElement;
-    const group = this.groupB().nativeElement;
-
-    const worldPosition = new Vector3();
-
-    mesh.getWorldPosition(worldPosition);
-
-    console.log('Cube local:', mesh.position);
-    console.log('Cube world:', worldPosition);
-
-    const testPoint = mesh.position.clone();
-
-    group.localToWorld(testPoint);
-
-    console.log('Group local → world:', testPoint);
   }
 }
