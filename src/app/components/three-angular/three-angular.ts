@@ -14,8 +14,14 @@ import { ThreeAngularScene } from '../three-angular-scene/three-angular-scene';
 })
 export class ThreeAngular {
   readonly screenPosition = signal<[number, number] | null>(null);
+  readonly pointerX = signal(0);
 
   onScreenPositionChange(position: [number, number] | null) {
     this.screenPosition.set(position);
+  }
+
+  onPointerMove(event: PointerEvent) {
+    const x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.pointerX.set(x);
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { beforeRender, extend, NgtArgs, NgtThreeEvent } from 'angular-three';
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 
@@ -30,9 +30,12 @@ export class ThreeAngularScene {
   readonly markerPosition = signal<[number, number, number] | null>(null);
   readonly screenPosition = signal<[number, number] | null>(null);
   readonly cameraRotationSpeed = signal(0.5);
+  private readonly cameraTarget = new Vector3(0, 0, 0);
 
   private cameraAngle = 0;
+  private targetCameraAngle = 0;
 
+  readonly pointerX = input(0);
   readonly screenPositionChange = output<[number, number] | null>();
 
   constructor() {
@@ -50,31 +53,46 @@ export class ThreeAngularScene {
     //    */
     // })
 
-    beforeRender(({ camera, size }) => {
-      camera.lookAt(0, 0, 0);
+    beforeRender(({ camera, size, delta }) => {
+      // camera.lookAt(0, 0, 0);
 
-      const position = this.markerPosition();
-      if (!position) return;
+      // const position = this.markerPosition();
+      // if (!position) return;
 
-      const group = this.groupB().nativeElement;
-      const point = new Vector3(
-        position[0],
-        position[1],
-        position[2]
-      )
+      // const group = this.groupB().nativeElement;
+      // const point = new Vector3(
+      //   position[0],
+      //   position[1],
+      //   position[2]
+      // )
 
-      // local groupB to world
-      group.localToWorld(point);
+      // // local groupB to world
+      // group.localToWorld(point);
 
-      // world to ndc (normalized device coordinates)
-      point.project(camera);
+      // // world to ndc (normalized device coordinates)
+      // point.project(camera);
 
-      // ndc to pixels
-      const x = (point.x + 1) / 2 * size.width;
-      const y = (1 - point.y) / 2 * size.height;
+      // // ndc to pixels
+      // const x = (point.x + 1) / 2 * size.width;
+      // const y = (1 - point.y) / 2 * size.height;
 
-      this.screenPosition.set([x, y]);
-      this.screenPositionChange.emit([x, y]);
+      // this.screenPosition.set([x, y]);
+      // this.screenPositionChange.emit([x, y]);
+
+      const x = this.pointerX();
+
+      this.targetCameraAngle = x * this.Math.PI / 2;
+
+      this.cameraAngle += (this.targetCameraAngle - this.cameraAngle) * 0.08;
+
+      const radius = 5;
+      const height = 2;
+
+      camera.position.x = this.Math.sin(this.cameraAngle) * radius;
+      camera.position.z = this.Math.cos(this.cameraAngle) * radius;
+      camera.position.y = height;
+
+      camera.lookAt(this.cameraTarget);
     })
   }
 

@@ -1,4 +1,4 @@
-<div class="scene-container">
+<div class="scene-container" (pointermove)="onPointerMove($event)">
     <ngt-canvas 
         [camera]="{
             position:[2,0,3],
@@ -7,7 +7,10 @@
     >
         <ng-template canvasContent>
     
-            <app-three-angular-scene (screenPositionChange)="onScreenPositionChange($event)" />
+            <app-three-angular-scene 
+                (screenPositionChange)="onScreenPositionChange($event)" 
+                [pointerX]="pointerX()"
+            />
     
         </ng-template>
     </ngt-canvas>
