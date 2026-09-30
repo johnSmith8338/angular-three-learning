@@ -1,9 +1,12 @@
+<!-- <ngt-hemisphere-light *args="['#ffffff','#666666',1.5]" /> -->
 <ngt-ambient-light [intensity]="0.2" />
-<ngt-directional-light [position]="[2,3,5]" [intensity]="2" />
+<ngt-directional-light [position]="[3,4,5]" [intensity]="2" />
+<ngt-directional-light [position]="[-4,1,2]" [intensity]="1" />
+<ngt-directional-light [position]="[0,1,-4]" [intensity]="0.4" />
 
 <ngt-group #groupA >
     <ngt-group #groupB [scale]="[2, 2, 2]">
-        <ngt-mesh [position]="[0, 0, 0]">
+        <ngt-mesh #model [position]="[0, 0, 0]">
             <ngt-box-geometry />
             <ngt-mesh-standard-material 
                 [color]="green"

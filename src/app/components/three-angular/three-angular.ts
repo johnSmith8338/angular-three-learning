@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, signal, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, signal, viewChildren } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
 import { ThreeAngularScene } from '../three-angular-scene/three-angular-scene';
 import { Hotspot } from '../../models/hotspot.interface';
@@ -44,6 +44,15 @@ export class ThreeAngular {
 
   private previousPointerX = 0;
   private previousPointerY = 0;
+
+  readonly hotspotElementMap = computed(() => {
+    const elements = this.hotspotElements();
+
+    return new Map(elements.map(element => {
+      const id = Number(element.nativeElement.dataset['hotspotId'])
+      return [id, element.nativeElement];
+    }))
+  })
 
   onPointerDown(event: PointerEvent) {
     this.dragging.set(true);
