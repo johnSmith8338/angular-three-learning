@@ -32,10 +32,8 @@ export class ThreeAngularScene {
   readonly cameraRotationSpeed = signal(0.5);
   private readonly cameraTarget = new Vector3(0, 0, 0);
 
-  private cameraAngle = 0;
-  private targetCameraAngle = 0;
-
-  readonly pointerX = input(0);
+  readonly cameraAngle = input(0);
+  readonly cameraVerticalAngle = input(0);
   readonly screenPositionChange = output<[number, number] | null>();
 
   constructor() {
@@ -53,46 +51,49 @@ export class ThreeAngularScene {
     //    */
     // })
 
-    beforeRender(({ camera, size, delta }) => {
-      // camera.lookAt(0, 0, 0);
-
-      // const position = this.markerPosition();
-      // if (!position) return;
-
-      // const group = this.groupB().nativeElement;
-      // const point = new Vector3(
-      //   position[0],
-      //   position[1],
-      //   position[2]
-      // )
-
-      // // local groupB to world
-      // group.localToWorld(point);
-
-      // // world to ndc (normalized device coordinates)
-      // point.project(camera);
-
-      // // ndc to pixels
-      // const x = (point.x + 1) / 2 * size.width;
-      // const y = (1 - point.y) / 2 * size.height;
-
-      // this.screenPosition.set([x, y]);
-      // this.screenPositionChange.emit([x, y]);
-
-      const x = this.pointerX();
-
-      this.targetCameraAngle = x * this.Math.PI / 2;
-
-      this.cameraAngle += (this.targetCameraAngle - this.cameraAngle) * 0.08;
-
+    beforeRender(({ camera, size }) => {
+      /**
+       * работа с камерой
+       */
       const radius = 5;
-      const height = 2;
+      const verticalAngle = this.cameraVerticalAngle();
 
-      camera.position.x = this.Math.sin(this.cameraAngle) * radius;
-      camera.position.z = this.Math.cos(this.cameraAngle) * radius;
-      camera.position.y = height;
+      const horizontalRadius = this.Math.cos(verticalAngle) * radius;
+
+      camera.position.x = this.Math.sin(this.cameraAngle()) * horizontalRadius;
+      camera.position.y = this.Math.sin(verticalAngle) * radius;
+      camera.position.z = this.Math.cos(this.cameraAngle()) * horizontalRadius;
 
       camera.lookAt(this.cameraTarget);
+
+      /**
+       * работа с указателем мыши на объект
+       */
+      const position = this.markerPosition();
+      if (!position) return;
+
+      const group = this.groupB().nativeElement;
+      const point = new Vector3(
+        position[0],
+        position[1],
+        position[2]
+      )
+
+      // local groupB to world
+      group.localToWorld(point);
+
+      // world to ndc (normalized device coordinates)
+      point.project(camera);
+
+      // ndc to pixels
+      const xSpot = (point.x + 1) / 2 * size.width;
+      const ySpot = (1 - point.y) / 2 * size.height;
+      const screenPosition: [number, number] = [
+        xSpot, ySpot
+      ]
+
+      this.screenPosition.set(screenPosition);
+      this.screenPositionChange.emit(screenPosition);
     })
   }
 

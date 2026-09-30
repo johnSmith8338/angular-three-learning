@@ -1,11 +1,11 @@
 <ngt-ambient-light [intensity]="0.2" />
 <ngt-directional-light [position]="[2,3,5]" [intensity]="2" />
 
-<ngt-group #groupA [position]="[-1,0,0]" [rotation]="[0, Math.PI / 6, 0]">
-    <ngt-group #groupB [position]="[1,0,0]" [rotation]="[0, Math.PI / 4, 0]" [scale]="[2, 2, 2]">
+<ngt-group #groupA [position]="[0,0,0]" [rotation]="[0, Math.PI / 4, 0]">
+    <ngt-group #groupB [position]="[0,0,0]" [rotation]="[0, Math.PI / 4, 0]" [scale]="[2, 2, 2]">
         <ngt-mesh #mesh
             (pointermove)="onCubePointerMove($event)"
-            [position]="[2, 0, 0]"
+            [position]="[0, 0, 0]"
         >
             <ngt-box-geometry />
             <ngt-mesh-standard-material 
@@ -17,7 +17,7 @@
 
         @if (markerPosition(); as position) {
             <ngt-mesh [position]="position">
-                <ngt-sphere-geometry *args="[0.2,12,12]" />
+                <ngt-sphere-geometry *args="[0.1,6,6]" />
                 <ngt-mesh-standard-material [color]="'#ff0000'" />
             </ngt-mesh>
         }

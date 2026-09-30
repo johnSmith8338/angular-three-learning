@@ -14,6 +14,9 @@ ngt-canvas {
     position: relative;
     width: 100%;
     height: 100%;
+
+    // убираем прокрутку страницы на тач-устройствах
+    touch-action: none;
 }
 
 .html-marker {
