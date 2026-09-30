@@ -19,12 +19,28 @@ ngt-canvas {
     touch-action: none;
 }
 
+.hotspot-wrapper {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
 .html-marker {
     position: absolute;
     width: 12px;
     height: 12px;
+    padding: 0;
     transform: translate(-50%, -50%);
     border-radius: 50%;
     background: #ffd900;
     pointer-events: none;
+    will-change: transform;
+}
+
+.html-marker_dot {
+    display: block;
+}
+
+.html-marker_label {
+    display: none;
 }

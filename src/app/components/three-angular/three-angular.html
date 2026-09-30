@@ -10,20 +10,24 @@
         }"
     >
         <ng-template canvasContent>
-    
-            <app-three-angular-scene 
-                (screenPositionChange)="onScreenPositionChange($event)" 
+            <app-three-angular-scene  
                 [cameraAngle]="cameraAngle()"
                 [cameraVerticalAngle]="cameraVerticalAngle()"
+                [hotspotElements]="hotspotElements()"
+                [hotspots]="hotspots"
             />
-    
         </ng-template>
     </ngt-canvas>
     
-    @if (screenPosition();as position) {
-        <div class="html-marker"
-            [style.left.px]="position[0]"
-            [style.top.px]="position[1]"
-        ></div>
-    }
+    <div class="hotspot-wrapper">
+        @for (hotspot of hotspots; track hotspot.id) {
+            <button #hotspotElement class="html-marker"
+                [attr.data-hotspot-id]="hotspot.id"
+                [attr.aria-label]="hotspot.title"
+            >
+                <span class="html-marker_dot"></span>
+                <span class="html-marker_label">{{hotspot.title}}</span>
+            </button>
+        }
+    </div>
 </div>
