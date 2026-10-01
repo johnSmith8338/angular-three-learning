@@ -102,7 +102,8 @@ export class ThreeAngularScene {
 
       const firstIntersection = this.raycaster.intersectObject(model, true)[0];
 
-      const isOccluded = firstIntersection !== undefined && firstIntersection.distance < distanceToHotspot;
+      const occlusionEpsilon = 0.01;
+      const isOccluded = firstIntersection !== undefined && firstIntersection.distance < distanceToHotspot - occlusionEpsilon;
 
       element.style.opacity = isOccluded ? '0' : '1';
       if (isOccluded) return;

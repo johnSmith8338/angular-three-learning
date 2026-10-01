@@ -21,19 +21,19 @@ export class ThreeAngular {
   readonly hotspots: Hotspot[] = [
     {
       id: 1,
-      position: [-0.5, 0.5, 0.5],
+      position: [-0.5, 0.5, 0.55],
       title: 'Заголовок 1',
       description: 'Описание для заголовка 1'
     },
     {
       id: 2,
-      position: [0.5, 0.2, 0.5],
+      position: [0.5, 0.2, 0.55],
       title: 'Заголовок 2',
       description: 'Описание для заголовка 2'
     },
     {
       id: 3,
-      position: [0, -0.5, 0.5],
+      position: [0, -0.5, 0.55],
       title: 'Заголовок 3',
       description: 'Описание для заголовка 3'
     },
