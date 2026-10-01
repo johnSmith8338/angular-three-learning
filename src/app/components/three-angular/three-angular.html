@@ -9,18 +9,28 @@
             <app-three-angular-scene
                 [hotspots]="hotspots"
                 [hotspotElements]="hotspotElementMap()"
+                (hotspotSelected)="onHotspotSelected($event)"
+                (hotspotDeselected)="onHotspotDeselected()"
+                [selectedHotspotId]="selectedHotspotId()"
             />
         </ng-template>
     </ngt-canvas>
     
+    <!-- желтые html точки -->
     <div class="hotspot-wrapper">
         @for (hotspot of hotspots; track hotspot.id) {
             <button #hotspotElement class="html-marker"
+                [class.selected]="selectedHotspotId()===hotspot.id"
                 [attr.data-hotspot-id]="hotspot.id"
                 [attr.aria-label]="hotspot.title"
             >
                 <span class="html-marker_dot"></span>
-                <span class="html-marker_label">{{hotspot.title}}</span>
+                @if (selectedHotspotId()===hotspot.id) {
+                    <span class="html-marker_tooltip">
+                        <strong class="html-marker_label">{{hotspot.title}}</strong>
+                        <span>{{hotspot.description}}</span>
+                    </span>
+                }
             </button>
         }
     </div>

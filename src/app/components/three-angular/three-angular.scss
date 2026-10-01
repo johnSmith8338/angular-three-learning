@@ -32,15 +32,50 @@ ngt-canvas {
     padding: 0;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: #ffd900;
+    background: transparent;
     pointer-events: none;
     will-change: transform;
+
+    &.selected {
+        .html-marker_dot {
+            width: 16px;
+            height: 16px;
+        }
+    }
 }
 
 .html-marker_dot {
     display: block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffd900;
+    transition: width 0.18s ease, height 0.18s ease;
 }
 
-.html-marker_label {
-    display: none;
+.html-marker_tooltip {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 12px);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: max-content;
+    max-width: 240px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgb(20 20 20 / 90%);
+    color: white;
+    text-align: left;
+    pointer-events: auto;
+    transform: translateX(-50%);
+
+    strong {
+        font-size: 14px;
+    }
+
+    span {
+        font-size: 12px;
+        line-height: 1.4;
+    }
 }

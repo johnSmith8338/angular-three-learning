@@ -16,6 +16,8 @@ import { Hotspot } from '../../models/hotspot.interface';
 export class ThreeAngular {
   readonly hotspotElements = viewChildren<ElementRef<HTMLButtonElement>>('hotspotElement');
 
+  readonly selectedHotspotId = signal<number | null>(null);
+
   readonly hotspots: Hotspot[] = [
     {
       id: 1,
@@ -37,9 +39,6 @@ export class ThreeAngular {
     },
   ]
 
-  private previousPointerX = 0;
-  private previousPointerY = 0;
-
   readonly hotspotElementMap = computed(() => {
     const elements = this.hotspotElements();
 
@@ -48,4 +47,12 @@ export class ThreeAngular {
       return [id, element.nativeElement];
     }))
   })
+
+  onHotspotSelected(hotspot: Hotspot) {
+    this.selectedHotspotId.set(hotspot.id);
+  }
+
+  onHotspotDeselected() {
+    this.selectedHotspotId.set(null);
+  }
 }

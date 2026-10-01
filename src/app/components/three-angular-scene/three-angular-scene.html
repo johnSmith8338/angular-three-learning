@@ -15,10 +15,15 @@
             />
         </ngt-mesh>
 
+        <!-- красные объемные сферы -->
         @for (hotspot of hotspots(); track hotspot.id) {
-            <ngt-mesh [position]="hotspot.position">
+            <ngt-mesh 
+                [position]="hotspot.position"
+                [scale]="selectedHotspotId()===hotspot.id?[1.4,1.4,1.4]:[1,1,1]"
+                (pointerdown)="onHotspotPointerDown(hotspot)"
+            >
                 <ngt-sphere-geometry *args="[0.1,6,6]" />
-                <ngt-mesh-standard-material [color]="'#ff0000'" />
+                <ngt-mesh-standard-material [color]="selectedHotspotId()===hotspot.id?'#ffff00':'#ff0000'" />
             </ngt-mesh>
         }
     </ngt-group>
@@ -26,9 +31,16 @@
 
 <ngts-orbit-controls 
     [options]="{
+        makeDefault:true,
         target:[0,0,0],
         minDistance:2,
-        maxDistance:8
+        maxDistance:8,
+        minPolarAngle:Math.PI/4,
+        maxPolarAngle:Math.PI*3/4,
+        enableDamping:true,
+        dampingFactor:0.05,
+        enableZoom:true,
+        enablePan:true,
     }"
 />
 

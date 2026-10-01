@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, input, viewChild } from '@angular/core';
-import { beforeRender, extend, NgtArgs } from 'angular-three';
+import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, input, output, signal, viewChild } from '@angular/core';
+import { beforeRender, extend, injectStore, NgtArgs } from 'angular-three';
 import { BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
+import { OrbitControls } from 'three-stdlib';
 
 extend({
   Mesh,
@@ -23,25 +24,40 @@ extend({
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ThreeAngularScene {
+  private readonly store = injectStore();
+
   private readonly groupB = viewChild.required<ElementRef<Group>>('groupB');
   private readonly model = viewChild.required<ElementRef<Mesh>>('model');
 
   readonly green = 0x00ff00; // или можно прямо в шаблоне вместо 'green' использовать #00ff00
   readonly Math = Math;
 
+  readonly selectedHotspotId = input<number | null>(null);
   readonly hotspots = input.required<Hotspot[]>();
   readonly hotspotElements = input<ReadonlyMap<number, HTMLButtonElement>>(new Map());
+  readonly hotspotSelected = output<Hotspot>();
+  readonly hotspotDeselected = output<void>();
 
   private readonly hotspotWorldPosition = new Vector3();
   private readonly hotspotNdcPosition = new Vector3();
   private readonly cameraWorldPosition = new Vector3();
   private readonly raycaster = new Raycaster();
   private readonly rayDirection = new Vector3();
+  private readonly sceneCenter = new Vector3(0, 0, 0);
 
   private hotspotUpdateScheduled = false;
 
+  // анимация переключения камеры с объекта на target
+  private readonly targetStart = new Vector3();
+  private readonly targetEnd = new Vector3();
+
+  private targetAnimationProgress = 1;
+  private targetAnimationDuration = 500;
+  private targetAnimationStartTime = 0;
+
   constructor() {
     beforeRender(({ camera, size }) => {
+      this.updateTargetAnimation();
       this.scheduleHotspotUpdate(camera, size);
     })
   }
@@ -108,5 +124,74 @@ export class ThreeAngularScene {
       this.hotspotUpdateScheduled = false;
       this.updateHotspots(camera, size);
     })
+  }
+
+  private getHotspotWorldPosition(hotspot: Hotspot): Vector3 {
+    this.hotspotWorldPosition.set(
+      hotspot.position[0],
+      hotspot.position[1],
+      hotspot.position[2],
+    )
+
+    this.groupB().nativeElement.localToWorld(this.hotspotWorldPosition);
+
+    return this.hotspotWorldPosition;
+  }
+
+  onHotspotPointerDown(hotspot: Hotspot) {
+    // снимаем выделение повторным кликом
+    if (this.selectedHotspotId() === hotspot.id) {
+      this.clearHotspotSelection();
+      return;
+    }
+
+    const worldPosition = this.getHotspotWorldPosition(hotspot);
+
+    this.animateTargetTo(worldPosition);
+
+    this.hotspotSelected.emit(hotspot);
+  }
+
+  clearHotspotSelection() {
+    this.animateTargetTo(this.sceneCenter);
+    this.hotspotDeselected.emit();
+  }
+
+  private animateTargetTo(position: Vector3) {
+    // получаем ссылку на наш OrbitControls
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    this.targetStart.copy(controls.target);
+    this.targetEnd.copy(position);
+
+    this.targetAnimationProgress = 0;
+    this.targetAnimationStartTime = performance.now();
+  }
+
+  private updateTargetAnimation() {
+    if (this.targetAnimationProgress >= 1) return;
+
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    const elapsed = performance.now() - this.targetAnimationStartTime;
+
+    const progress = this.Math.min(elapsed / this.targetAnimationDuration, 1);
+    const easedProgress = this.easeOutCubic(progress);
+
+    this.targetAnimationProgress = progress;
+
+    controls.target.lerpVectors(
+      this.targetStart,
+      this.targetEnd,
+      easedProgress
+    )
+
+    controls.update();
+  }
+
+  private easeOutCubic(value: number): number {
+    return 1 - Math.pow(1 - value, 3);
   }
 }
