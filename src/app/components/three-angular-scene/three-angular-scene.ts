@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef,
 import { beforeRender, extend, NgtArgs } from 'angular-three';
 import { BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
+import { NgtsOrbitControls } from 'angular-three-soba/controls';
 
 extend({
   Mesh,
@@ -12,7 +13,10 @@ extend({
 
 @Component({
   selector: 'app-three-angular-scene',
-  imports: [NgtArgs],
+  imports: [
+    NgtArgs,
+    NgtsOrbitControls
+  ],
   templateUrl: './three-angular-scene.html',
   styleUrl: './three-angular-scene.scss',
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -28,10 +32,6 @@ export class ThreeAngularScene {
   readonly hotspots = input.required<Hotspot[]>();
   readonly hotspotElements = input<ReadonlyMap<number, HTMLButtonElement>>(new Map());
 
-  readonly cameraAngle = input(0);
-  readonly cameraVerticalAngle = input(0);
-
-  private readonly cameraTarget = new Vector3(0, 0, 0);
   private readonly hotspotWorldPosition = new Vector3();
   private readonly hotspotNdcPosition = new Vector3();
   private readonly cameraWorldPosition = new Vector3();
@@ -42,29 +42,8 @@ export class ThreeAngularScene {
 
   constructor() {
     beforeRender(({ camera, size }) => {
-      /**
-       * работа с камерой
-       */
-      this.updateCamera(camera);
-
-      /**
-       * работа с указателем мыши на объект
-       */
       this.scheduleHotspotUpdate(camera, size);
     })
-  }
-
-  private updateCamera(camera: Camera) {
-    const radius = 5;
-    const verticalAngle = this.cameraVerticalAngle();
-
-    const horizontalRadius = this.Math.cos(verticalAngle) * radius;
-
-    camera.position.x = this.Math.sin(this.cameraAngle()) * horizontalRadius;
-    camera.position.y = this.Math.sin(verticalAngle) * radius;
-    camera.position.z = this.Math.cos(this.cameraAngle()) * horizontalRadius;
-
-    camera.lookAt(this.cameraTarget);
   }
 
   private updateHotspots(camera: Camera, size: { width: number; height: number }) {

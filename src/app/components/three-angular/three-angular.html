@@ -1,8 +1,4 @@
-<div class="scene-container" 
-    (pointerdown)="onPointerDown($event)"
-    (pointermove)="onPointerMove($event)"
-    (pointerup)="onPointerUp($event)"
->
+<div class="scene-container">
     <ngt-canvas 
         [camera]="{
             position:[2,0,3],
@@ -10,9 +6,7 @@
         }"
     >
         <ng-template canvasContent>
-            <app-three-angular-scene  
-                [cameraAngle]="cameraAngle()"
-                [cameraVerticalAngle]="cameraVerticalAngle()"
+            <app-three-angular-scene
                 [hotspots]="hotspots"
                 [hotspotElements]="hotspotElementMap()"
             />
