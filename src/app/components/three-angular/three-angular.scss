@@ -42,6 +42,13 @@ ngt-canvas {
             height: 16px;
         }
     }
+
+    &.hovered {
+        .html-marker_dot {
+            width: 14px;
+            height: 14px;
+        }
+    }
 }
 
 .html-marker_dot {
@@ -69,6 +76,7 @@ ngt-canvas {
     text-align: left;
     pointer-events: auto;
     transform: translateX(-50%);
+    will-change: opacity;
 
     strong {
         font-size: 14px;

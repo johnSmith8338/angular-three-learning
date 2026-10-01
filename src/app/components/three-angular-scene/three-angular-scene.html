@@ -21,9 +21,13 @@
                 [position]="hotspot.position"
                 [scale]="selectedHotspotId()===hotspot.id?[1.4,1.4,1.4]:[1,1,1]"
                 (pointerdown)="onHotspotPointerDown(hotspot)"
+                (pointerover)="onHotspotPointerEnter(hotspot)"
+                (pointerout)="onHotspotPointerLeave()"
             >
                 <ngt-sphere-geometry *args="[0.1,6,6]" />
-                <ngt-mesh-standard-material [color]="selectedHotspotId()===hotspot.id?'#ffff00':'#ff0000'" />
+                <ngt-mesh-standard-material 
+                    [color]="selectedHotspotId()===hotspot.id?'#ffff00':hoveredHotspotId()===hotspot.id?'#ffffff':'#ff0000'" 
+                />
             </ngt-mesh>
         }
     </ngt-group>

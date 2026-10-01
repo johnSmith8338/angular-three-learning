@@ -9,9 +9,12 @@
             <app-three-angular-scene
                 [hotspots]="hotspots"
                 [hotspotElements]="hotspotElementMap()"
+                [selectedHotspotId]="selectedHotspotId()"
                 (hotspotSelected)="onHotspotSelected($event)"
                 (hotspotDeselected)="onHotspotDeselected()"
-                [selectedHotspotId]="selectedHotspotId()"
+                [hoveredHotspotId]="hoveredHotspotId()"
+                (hotspotPointerEnter)="onHotspotPointerEnter($event)"
+                (hotspotPointerLeave)="onHotspotPointerLeave()"
             />
         </ng-template>
     </ngt-canvas>
@@ -21,6 +24,7 @@
         @for (hotspot of hotspots; track hotspot.id) {
             <button #hotspotElement class="html-marker"
                 [class.selected]="selectedHotspotId()===hotspot.id"
+                [class.hovered]="hoveredHotspotId()===hotspot.id"
                 [attr.data-hotspot-id]="hotspot.id"
                 [attr.aria-label]="hotspot.title"
             >

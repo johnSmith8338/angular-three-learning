@@ -17,6 +17,7 @@ export class ThreeAngular {
   readonly hotspotElements = viewChildren<ElementRef<HTMLButtonElement>>('hotspotElement');
 
   readonly selectedHotspotId = signal<number | null>(null);
+  readonly hoveredHotspotId = signal<number | null>(null);
 
   readonly hotspots: Hotspot[] = [
     {
@@ -54,5 +55,13 @@ export class ThreeAngular {
 
   onHotspotDeselected() {
     this.selectedHotspotId.set(null);
+  }
+
+  onHotspotPointerEnter(hotspot: Hotspot): void {
+    this.hoveredHotspotId.set(hotspot.id);
+  }
+
+  onHotspotPointerLeave(): void {
+    this.hoveredHotspotId.set(null);
   }
 }

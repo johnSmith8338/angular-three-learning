@@ -32,11 +32,15 @@ export class ThreeAngularScene {
   readonly green = 0x00ff00; // или можно прямо в шаблоне вместо 'green' использовать #00ff00
   readonly Math = Math;
 
-  readonly selectedHotspotId = input<number | null>(null);
   readonly hotspots = input.required<Hotspot[]>();
   readonly hotspotElements = input<ReadonlyMap<number, HTMLButtonElement>>(new Map());
+
+  readonly selectedHotspotId = input<number | null>(null);
   readonly hotspotSelected = output<Hotspot>();
   readonly hotspotDeselected = output<void>();
+  readonly hoveredHotspotId = input<number | null>(null);
+  readonly hotspotPointerEnter = output<Hotspot>();
+  readonly hotspotPointerLeave = output<void>();
 
   private readonly hotspotWorldPosition = new Vector3();
   private readonly hotspotNdcPosition = new Vector3();
@@ -151,6 +155,14 @@ export class ThreeAngularScene {
     this.animateTargetTo(worldPosition);
 
     this.hotspotSelected.emit(hotspot);
+  }
+
+  onHotspotPointerEnter(hotspot: Hotspot): void {
+    this.hotspotPointerEnter.emit(hotspot);
+  }
+
+  onHotspotPointerLeave(): void {
+    this.hotspotPointerLeave.emit();
   }
 
   clearHotspotSelection() {
