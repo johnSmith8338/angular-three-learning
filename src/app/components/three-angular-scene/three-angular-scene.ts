@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, viewChild } from '@angular/core';
 import { beforeRender, extend, injectStore, NgtArgs } from 'angular-three';
-import { Box3, Camera, Group, PerspectiveCamera, Raycaster, Vector3 } from 'three';
+import { Box3, Camera, Group, PerspectiveCamera, Raycaster, Sphere, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
@@ -12,6 +12,7 @@ extend({
   Group,
   PerspectiveCamera,
   Raycaster,
+  Sphere,
   Vector3
 })
 
@@ -53,6 +54,7 @@ export class ThreeAngularScene {
   private readonly rayDirection = new Vector3();
 
   private readonly modelSize = new Vector3();
+  private readonly modelSphere = new Sphere();
 
   private readonly sceneCenter = new Vector3(0, 0, 0);
 
@@ -256,7 +258,11 @@ export class ThreeAngularScene {
     );
 
     this.modelSize.copy(size).multiplyScalar(scale);
-    console.log('MODEL SIZE:', this.modelSize);
+
+    const modelRadius = this.modelSize.length() / 2;
+
+    this.modelSphere.radius = modelRadius;
+    this.modelSphere.center.set(0, 0, 0);
 
     this.modelPrepared = true;
   }
@@ -264,17 +270,22 @@ export class ThreeAngularScene {
   private frameCamera(camera: Camera) {
     if (!(camera instanceof PerspectiveCamera)) return;
 
-    const maxSize = Math.max(this.modelSize.x, this.modelSize.y, this.modelSize.z);
-    const halfSize = maxSize / 2;
+    const radius = this.modelSphere.radius;
 
-    const fov = camera.fov * Math.PI / 180;
-    const distance = halfSize / Math.tan(fov / 2);
+    const verticalFov = camera.fov * Math.PI / 180;
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+
+    const verticalDistance = radius / Math.sin(verticalFov / 2);
+    const horizontalDistance = radius / Math.sin(horizontalFov / 2);
+    const distance = Math.max(verticalDistance, horizontalDistance);
 
     const padding = 1.2;
 
-    camera.position.set(0, 0, distance * padding);
-    camera.near = distance / 100;
-    camera.far = distance * 100;
+    const finalDistance = distance * padding;
+
+    camera.position.set(0, 0, finalDistance);
+    camera.near = finalDistance / 100;
+    camera.far = finalDistance * 100;
 
     camera.updateProjectionMatrix();
 
@@ -286,10 +297,5 @@ export class ThreeAngularScene {
     } else {
       camera.lookAt(0, 0, 0);
     }
-
-    console.log('CAMERA FRAME');
-    console.log('SIZE:', this.modelSize);
-    console.log('DISTANCE:', distance);
-    console.log('CAMERA POSITION:', camera.position);
   }
 }
