@@ -4,47 +4,40 @@
 <ngt-directional-light [position]="[-4,1,2]" [intensity]="1" />
 <ngt-directional-light [position]="[0,3,-4]" [intensity]="0.4" />
 
-<ngt-group #groupA >
-    <ngt-group #groupB>
-        <ngt-mesh #model [position]="[0, 0, 0]">
-            <ngt-box-geometry />
+<ngt-group #modelRoot>
+    @if (gltf.value(); as gltf) {
+        <ngt-primitive *args="[gltf.scene]" />
+    }
+
+    <!-- красные объемные сферы -->
+    @for (hotspot of hotspots(); track hotspot.id) {
+        <ngt-mesh 
+            [position]="hotspot.position"
+            [scale]="selectedHotspotId()===hotspot.id?[1.4,1.4,1.4]:hoveredHotspotId()===hotspot.id?[1.2,1.2,1.2]:[1,1,1]"
+            (pointerdown)="onHotspotPointerDown(hotspot)"
+            (pointerover)="onHotspotPointerEnter(hotspot)"
+            (pointerout)="onHotspotPointerLeave()"
+        >
+            <ngt-sphere-geometry *args="[0.1,16,16]" />
             <ngt-mesh-standard-material 
-                [color]="green"
-                [roughness]="0.3"
-                [metalness]="0.5"
+                [color]="selectedHotspotId()===hotspot.id?'#ffff00':hoveredHotspotId()===hotspot.id?'#ffffff':'#ff0000'" 
             />
         </ngt-mesh>
-
-        <!-- красные объемные сферы -->
-        @for (hotspot of hotspots(); track hotspot.id) {
-            <ngt-mesh 
-                [position]="hotspot.position"
-                [scale]="selectedHotspotId()===hotspot.id?[1.4,1.4,1.4]:[1,1,1]"
-                (pointerdown)="onHotspotPointerDown(hotspot)"
-                (pointerover)="onHotspotPointerEnter(hotspot)"
-                (pointerout)="onHotspotPointerLeave()"
-            >
-                <ngt-sphere-geometry *args="[0.1,6,6]" />
-                <ngt-mesh-standard-material 
-                    [color]="selectedHotspotId()===hotspot.id?'#ffff00':hoveredHotspotId()===hotspot.id?'#ffffff':'#ff0000'" 
-                />
-            </ngt-mesh>
-        }
-    </ngt-group>
+    }
 </ngt-group>
 
 <ngts-orbit-controls 
     [options]="{
         makeDefault:true,
         target:[0,0,0],
-        minDistance:2,
+        minDistance:0.5,
         maxDistance:8,
         minPolarAngle:Math.PI/4,
         maxPolarAngle:Math.PI*3/4,
         enableDamping:true,
         dampingFactor:0.05,
         enableZoom:true,
-        enablePan:true,
+        enablePan:true
     }"
 />
 

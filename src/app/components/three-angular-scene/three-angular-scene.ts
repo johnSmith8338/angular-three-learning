@@ -1,15 +1,18 @@
-import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, viewChild } from '@angular/core';
 import { beforeRender, extend, injectStore, NgtArgs } from 'angular-three';
-import { BoxGeometry, Camera, Group, Mesh, MeshStandardMaterial, Raycaster, Vector3 } from 'three';
+import { Box3, Camera, Group, PerspectiveCamera, Raycaster, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
+import { gltfResource } from 'angular-three-soba/loaders';
 
 extend({
-  Mesh,
-  BoxGeometry,
-  MeshStandardMaterial,
+  Box3,
+  Camera,
   Group,
+  PerspectiveCamera,
+  Raycaster,
+  Vector3
 })
 
 @Component({
@@ -26,50 +29,74 @@ extend({
 export class ThreeAngularScene {
   private readonly store = injectStore();
 
-  private readonly groupB = viewChild.required<ElementRef<Group>>('groupB');
-  private readonly model = viewChild.required<ElementRef<Mesh>>('model');
+  private readonly modelRoot = viewChild.required<ElementRef<Group>>('modelRoot');
 
-  readonly green = 0x00ff00; // или можно прямо в шаблоне вместо 'green' использовать #00ff00
   readonly Math = Math;
 
   readonly hotspots = input.required<Hotspot[]>();
   readonly hotspotElements = input<ReadonlyMap<number, HTMLButtonElement>>(new Map());
 
   readonly selectedHotspotId = input<number | null>(null);
+  readonly hoveredHotspotId = input<number | null>(null);
+
   readonly hotspotSelected = output<Hotspot>();
   readonly hotspotDeselected = output<void>();
-  readonly hoveredHotspotId = input<number | null>(null);
+
   readonly hotspotPointerEnter = output<Hotspot>();
   readonly hotspotPointerLeave = output<void>();
 
   private readonly hotspotWorldPosition = new Vector3();
   private readonly hotspotNdcPosition = new Vector3();
   private readonly cameraWorldPosition = new Vector3();
+
   private readonly raycaster = new Raycaster();
   private readonly rayDirection = new Vector3();
-  private readonly sceneCenter = new Vector3(0, 0, 0);
 
-  private hotspotUpdateScheduled = false;
+  private readonly modelSize = new Vector3();
+
+  private readonly sceneCenter = new Vector3(0, 0, 0);
 
   // анимация переключения камеры с объекта на target
   private readonly targetStart = new Vector3();
   private readonly targetEnd = new Vector3();
 
+  private modelPrepared = false;
+  private cameraFramed = false;
+  private hotspotUpdateScheduled = false;
+
   private targetAnimationProgress = 1;
   private targetAnimationDuration = 500;
   private targetAnimationStartTime = 0;
 
+  readonly gltf = gltfResource(
+    () => '/models/antique-camera.glb'
+  );
+
   constructor() {
     beforeRender(({ camera, size }) => {
       this.updateTargetAnimation();
+
+      if (!this.cameraFramed && this.modelPrepared) {
+        this.frameCamera(camera);
+        this.cameraFramed = true;
+      }
+
       this.scheduleHotspotUpdate(camera, size);
+    })
+
+    effect(() => {
+      const model = this.gltf.value()?.scene;
+      if (!model) return;
+      // this.logModelBounds(model);
+      this.prepareModel(model);
     })
   }
 
   private updateHotspots(camera: Camera, size: { width: number; height: number }) {
-    const group = this.groupB().nativeElement;
-    const model = this.model().nativeElement;
+    const modelRoot = this.modelRoot().nativeElement;
     const elements = this.hotspotElements();
+    const model = this.gltf.value()?.scene;
+    if (!model) return;
 
     camera.getWorldPosition(this.cameraWorldPosition);
 
@@ -84,7 +111,7 @@ export class ThreeAngularScene {
       )
 
       // local groupB to world
-      group.localToWorld(this.hotspotWorldPosition);
+      modelRoot.localToWorld(this.hotspotWorldPosition);
 
       // world to ndc (normalized device coordinates)
       this.hotspotNdcPosition.copy(this.hotspotWorldPosition).project(camera);
@@ -138,7 +165,7 @@ export class ThreeAngularScene {
       hotspot.position[2],
     )
 
-    this.groupB().nativeElement.localToWorld(this.hotspotWorldPosition);
+    this.modelRoot().nativeElement.localToWorld(this.hotspotWorldPosition);
 
     return this.hotspotWorldPosition;
   }
@@ -206,5 +233,63 @@ export class ThreeAngularScene {
 
   private easeOutCubic(value: number): number {
     return 1 - Math.pow(1 - value, 3);
+  }
+
+  private prepareModel(model: Group) {
+    const root = this.modelRoot().nativeElement;
+
+    // определяем исходный размер
+    const box = new Box3().setFromObject(model);
+    const size = box.getSize(new Vector3());
+    const center = box.getCenter(new Vector3());
+
+    const targetHeight = 2;
+    const scale = targetHeight / size.y;
+
+    root.scale.setScalar(scale);
+
+    // пересчитываем центр с учетом масштаба
+    root.position.set(
+      -center.x * scale,
+      -center.y * scale,
+      -center.z * scale,
+    );
+
+    this.modelSize.copy(size).multiplyScalar(scale);
+    console.log('MODEL SIZE:', this.modelSize);
+
+    this.modelPrepared = true;
+  }
+
+  private frameCamera(camera: Camera) {
+    if (!(camera instanceof PerspectiveCamera)) return;
+
+    const maxSize = Math.max(this.modelSize.x, this.modelSize.y, this.modelSize.z);
+    const halfSize = maxSize / 2;
+
+    const fov = camera.fov * Math.PI / 180;
+    const distance = halfSize / Math.tan(fov / 2);
+
+    const padding = 1.2;
+
+    camera.position.set(0, 0, distance * padding);
+    camera.near = distance / 100;
+    camera.far = distance * 100;
+
+    camera.updateProjectionMatrix();
+
+    const controls = this.store.controls() as OrbitControls | undefined;
+
+    if (controls) {
+      controls.target.set(0, 0, 0);
+      controls.update();
+    } else {
+      camera.lookAt(0, 0, 0);
+    }
+
+    console.log('CAMERA FRAME');
+    console.log('SIZE:', this.modelSize);
+    console.log('DISTANCE:', distance);
+    console.log('CAMERA POSITION:', camera.position);
   }
 }
