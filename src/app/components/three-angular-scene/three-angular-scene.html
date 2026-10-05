@@ -4,7 +4,11 @@
 <ngt-directional-light [position]="[-4,1,2]" [intensity]="1" />
 <ngt-directional-light [position]="[0,3,-4]" [intensity]="0.4" />
 
-<ngt-group #modelRoot (pointerdown)="onModelPointerDown($event)">
+<ngt-group #modelRoot 
+    (pointerdown)="onModelPointerDown($event)"
+    (pointermove)="onModelPointerMove($event)"
+    (pointerup)="onModelPointerUp($event)"
+>
     @if (gltf.value(); as gltf) {
         <ngt-primitive *args="[gltf.scene]" />
     }
@@ -14,7 +18,9 @@
         <ngt-mesh 
             [position]="hotspot.position"
             [scale]="selectedHotspotId()===hotspot.id?[1.4,1.4,1.4]:hoveredHotspotId()===hotspot.id?[1.2,1.2,1.2]:[1,1,1]"
-            (pointerdown)="onHotspotPointerDown(hotspot)"
+            (pointerdown)="onHotspotPointerDown(hotspot,$event)"
+            (pointermove)="onHotspotPointerMove($event)"
+            (pointerup)="onHotspotPointerUp($event)"
             (pointerover)="onHotspotPointerEnter(hotspot)"
             (pointerout)="onHotspotPointerLeave()"
         >

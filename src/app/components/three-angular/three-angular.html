@@ -15,12 +15,15 @@
                 [hoveredHotspotId]="hoveredHotspotId()"
                 (hotspotPointerEnter)="onHotspotPointerEnter($event)"
                 (hotspotPointerLeave)="onHotspotPointerLeave()"
+                (meshSelected)="onMeshSelected($event)"
+                (meshDeselected)="onMeshDeselected()"
+                [focusMode]="focusMode()"
             />
         </ng-template>
     </ngt-canvas>
     
     <!-- желтые html точки -->
-    <div class="hotspot-wrapper">
+    <div class="hotspot-wrapper" [class.hidden]="isFocusMode()">
         @for (hotspot of hotspots; track hotspot.id) {
             <button #hotspotElement class="html-marker"
                 [class.selected]="selectedHotspotId()===hotspot.id"
@@ -38,4 +41,18 @@
             </button>
         }
     </div>
+
+    @if (selectedMeshHotspot(); as hotspot) {
+        <aside class="focus-panel">
+            <div class="focus-panel_content">
+                <strong class="focus-panel_title">{{hotspot.title}}</strong>
+                <p class="focus-panel_description">{{hotspot.description}}</p>
+            </div>
+            <button type="button"
+                class="focus-panel_close"
+                aria-label="close"
+                (click)="onMeshDeselected()"
+            >×</button>
+        </aside>
+    }
 </div>

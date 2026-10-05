@@ -18,27 +18,27 @@ export class ThreeAngular {
 
   readonly selectedHotspotId = signal<number | null>(null);
   readonly hoveredHotspotId = signal<number | null>(null);
+  readonly selectedMeshHotspot = signal<Hotspot | null>(null);
+  readonly focusMode = signal(false);
 
   readonly hotspots: Hotspot[] = [
     {
       id: 1,
       position: [-0.5, 0.5, 0.55],
       title: 'Заголовок 1',
-      description: 'Описание для заголовка 1'
+      description: 'Описание для заголовка 1',
+      meshName: 'camera'
     },
     {
       id: 2,
       position: [0.5, 0.2, 0.55],
       title: 'Заголовок 2',
-      description: 'Описание для заголовка 2'
-    },
-    {
-      id: 3,
-      position: [0, -0.5, 0.55],
-      title: 'Заголовок 3',
-      description: 'Описание для заголовка 3'
+      description: 'Описание для заголовка 2',
+      meshName: 'tripod'
     },
   ]
+
+  readonly isFocusMode = computed(() => this.selectedMeshHotspot() !== null);
 
   readonly hotspotElementMap = computed(() => {
     const elements = this.hotspotElements();
@@ -63,5 +63,15 @@ export class ThreeAngular {
 
   onHotspotPointerLeave(): void {
     this.hoveredHotspotId.set(null);
+  }
+
+  onMeshSelected(hotspot: Hotspot): void {
+    this.selectedMeshHotspot.set(hotspot);
+    this.focusMode.set(true);
+  }
+
+  onMeshDeselected(): void {
+    this.selectedMeshHotspot.set(null);
+    this.focusMode.set(false);
   }
 }

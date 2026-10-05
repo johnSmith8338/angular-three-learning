@@ -40,11 +40,16 @@ export class ThreeAngularScene {
   readonly selectedHotspotId = input<number | null>(null);
   readonly hoveredHotspotId = input<number | null>(null);
 
+  readonly focusMode = input(false);
+
   readonly hotspotSelected = output<Hotspot>();
   readonly hotspotDeselected = output<void>();
 
   readonly hotspotPointerEnter = output<Hotspot>();
   readonly hotspotPointerLeave = output<void>();
+
+  readonly meshSelected = output<Hotspot>();
+  readonly meshDeselected = output<void>();
 
   private readonly hotspotWorldPosition = new Vector3();
   private readonly hotspotNdcPosition = new Vector3();
@@ -56,11 +61,23 @@ export class ThreeAngularScene {
   private readonly modelSize = new Vector3();
   private readonly modelSphere = new Sphere();
 
+  private readonly meshBounds = new Box3();
+  private readonly meshCenter = new Vector3();
+  private readonly meshSphere = new Sphere();
+
   private readonly sceneCenter = new Vector3(0, 0, 0);
 
   // анимация переключения камеры с объекта на target
   private readonly targetStart = new Vector3();
   private readonly targetEnd = new Vector3();
+
+  private readonly cameraStart = new Vector3();
+  private readonly cameraEnd = new Vector3();
+
+  private readonly defaultCameraPosition = new Vector3();
+  private readonly defaultCameraTarget = new Vector3();
+
+  private defaultCameraSaved = false;
 
   private modelPrepared = false;
   private cameraFramed = false;
@@ -70,25 +87,40 @@ export class ThreeAngularScene {
   private targetAnimationDuration = 500;
   private targetAnimationStartTime = 0;
 
+  private cameraAnimationProgress = 1;
+  private cameraAnimationDuration = 600;
+  private cameraAnimationStartTime = 0;
+
   readonly gltf = gltfResource(
     () => '/models/antique-camera.glb'
   );
 
   private hoveredMesh: Mesh | null = null;
   private selectedMesh: Mesh | null = null;
-  private pointerDownMesh: Mesh | null = null;
 
-  private readonly originalMeshAppearence = new Map<Mesh, {
+  private isFocusMode = false;
+
+  private readonly originalMeshAppearance = new Map<Mesh, {
     emissive: Color;
-    emissiveIntensity: number
+    emissiveIntensity: number,
+    opacity: number,
+    transparent: boolean
   }>
+
+  private readonly pointerDownPosition = new Vector2();
+  private pointerDownMesh: Mesh | null = null;
+  private pointerDownHotspot: Hotspot | null = null;
+  private isDragging = false;
+  private readonly clickThreshold = 5;
 
   constructor() {
     beforeRender(({ camera, size }) => {
       this.updateTargetAnimation();
+      this.updateCameraAnimation();
 
       if (!this.cameraFramed && this.modelPrepared) {
         this.frameCamera(camera);
+        this.saveDefaultCameraState(camera);
         this.cameraFramed = true;
       }
 
@@ -102,30 +134,22 @@ export class ThreeAngularScene {
       this.prepareModel(model);
     });
 
+    effect(() => {
+      const focusMode = this.focusMode();
+      if (!focusMode && this.isFocusMode) this.exitFocusMode();
+    })
+
     beforeRender((state) => {
-      const model = this.gltf.value()?.scene;
-      if (!model) return;
+      const mesh = this.isFocusMode ?
+        this.getFocusedMesh(state.pointer, state.camera) :
+        this.getHoveredMesh(state.pointer, state.camera)
 
-      state.raycaster.setFromCamera(
-        state.pointer,
-        state.camera,
-      );
-
-      const intersection = state.raycaster.intersectObject(model, true,)[0];
-
-      if (!intersection) {
+      if (!mesh) {
         this.clearMeshHighlight();
         return;
       }
 
-      const object = intersection.object;
-
-      if (!(object instanceof Mesh)) {
-        this.clearMeshHighlight();
-        return;
-      }
-
-      this.highlightMesh(object);
+      this.highlightMesh(mesh);
     });
   }
 
@@ -207,18 +231,26 @@ export class ThreeAngularScene {
     return this.hotspotWorldPosition;
   }
 
-  onHotspotPointerDown(hotspot: Hotspot) {
-    // снимаем выделение повторным кликом
-    if (this.selectedHotspotId() === hotspot.id) {
-      this.clearHotspotSelection();
-      return;
-    }
+  onHotspotPointerDown(hotspot: Hotspot, event: NgtThreeEvent<PointerEvent>) {
+    this.pointerDownPosition.set(
+      event.nativeEvent.clientX,
+      event.nativeEvent.clientY
+    )
 
-    const worldPosition = this.getHotspotWorldPosition(hotspot);
+    this.pointerDownHotspot = hotspot;
+    this.isDragging = false;
+  }
 
-    this.animateTargetTo(worldPosition);
+  onHotspotPointerMove(event: NgtThreeEvent<PointerEvent>) {
+    this.updateDragState(event);
+  }
 
-    this.hotspotSelected.emit(hotspot);
+  onHotspotPointerUp(event: NgtThreeEvent<PointerEvent>) {
+    if (!this.pointerDownHotspot) return;
+    if (!this.isDragging) this.selectHotspot(this.pointerDownHotspot);
+
+    this.pointerDownHotspot = null;
+    this.isDragging = false;
   }
 
   onHotspotPointerEnter(hotspot: Hotspot): void {
@@ -232,6 +264,18 @@ export class ThreeAngularScene {
   clearHotspotSelection() {
     this.animateTargetTo(this.sceneCenter);
     this.hotspotDeselected.emit();
+  }
+
+  private selectHotspot(hotspot: Hotspot) {
+    if (this.selectedHotspotId() === hotspot.id) {
+      this.clearHotspotSelection();
+      return;
+    }
+
+    const worldPosition = this.getHotspotWorldPosition(hotspot);
+
+    this.animateTargetTo(worldPosition);
+    this.hotspotSelected.emit(hotspot);
   }
 
   private animateTargetTo(position: Vector3) {
@@ -363,19 +407,19 @@ export class ThreeAngularScene {
 
     this.rememberOriginalAppearance(mesh);
 
-    if (this.selectedMesh === mesh) {
-      mesh.material.emissive.set('#00ff00');
-      mesh.material.emissiveIntensity = 1;
-      return;
-    }
+    // if (this.selectedMesh === mesh) {
+    //   mesh.material.emissive.set('#00ff00');
+    //   mesh.material.emissiveIntensity = 1;
+    //   return;
+    // }
 
-    if (this.hoveredMesh === mesh) {
+    if (this.hoveredMesh === mesh && !this.isFocusMode) {
       mesh.material.emissive.set('#ffff00');
       mesh.material.emissiveIntensity = 1;
       return;
     }
 
-    const original = this.originalMeshAppearence.get(mesh);
+    const original = this.originalMeshAppearance.get(mesh);
     if (!original) return;
 
     mesh.material.emissive.copy(original.emissive);
@@ -383,54 +427,236 @@ export class ThreeAngularScene {
   }
 
   private rememberOriginalAppearance(mesh: Mesh) {
-    if (this.originalMeshAppearence.has(mesh)) return;
+    if (this.originalMeshAppearance.has(mesh)) return;
     if (!(mesh.material instanceof MeshStandardMaterial)) return;
 
-    this.originalMeshAppearence.set(mesh, {
+    this.originalMeshAppearance.set(mesh, {
       emissive: mesh.material.emissive.clone(),
-      emissiveIntensity: mesh.material.emissiveIntensity
+      emissiveIntensity: mesh.material.emissiveIntensity,
+      opacity: mesh.material.opacity,
+      transparent: mesh.material.transparent
     })
   }
 
   private selectMesh(mesh: Mesh) {
     if (this.selectedMesh === mesh) {
-      this.deselectMesh();
+      this.exitFocusMode();
+      this.meshDeselected.emit();
       return;
     }
 
-    if (this.selectedMesh) {
-      const previousMesh = this.selectedMesh;
-      this.selectedMesh = null;
-      this.applyMeshAppearance(previousMesh);
+    const hotspot = this.getHotspotForMesh(mesh);
+    if (!hotspot) {
+      this.enterFocusMode(mesh);
+      return;
     }
 
-    this.rememberOriginalAppearance(mesh);
+    this.enterFocusMode(mesh);
+    this.meshSelected.emit(hotspot);
+  }
+
+  private enterFocusMode(mesh: Mesh) {
     this.selectedMesh = mesh;
+    this.isFocusMode = true;
+
+    this.hideOtherMeshes(mesh);
     this.applyMeshAppearance(mesh);
+
+    const center = this.getMeshWorldCenter(mesh);
+    this.animateTargetTo(center);
+    this.focusCamera(mesh);
   }
 
-  private deselectMesh() {
-    if (!this.selectedMesh) return;
+  private hideOtherMeshes(selected: Mesh) {
+    const model = this.gltf.value()?.scene;
+    if (!model) return;
 
-    const mesh = this.selectedMesh;
+    model.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      if (!(object.material instanceof MeshStandardMaterial)) return;
+
+      this.rememberOriginalAppearance(object);
+
+      object.material.transparent = true;
+      object.material.opacity = object === selected ? 1 : 0;
+      object.material.needsUpdate = true;
+    })
+  }
+
+  private restoreAllMeshes() {
+    const model = this.gltf.value()?.scene;
+    if (!model) return;
+
+    model.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      if (!(object.material instanceof MeshStandardMaterial)) return;
+
+      const original = this.originalMeshAppearance.get(object);
+      if (!original) return;
+
+      object.material.opacity = original.opacity;
+      object.material.transparent = original.transparent;
+      object.material.emissive.copy(original.emissive);
+      object.material.emissiveIntensity = original.emissiveIntensity;
+      object.material.needsUpdate = true;
+    })
+  }
+
+  private exitFocusMode() {
+    this.isFocusMode = false;
+
+    this.restoreAllMeshes();
+
     this.selectedMesh = null;
-    this.applyMeshAppearance(mesh);
+
+    this.animateTargetTo(this.defaultCameraTarget);
+
+    this.restoreCamera();
+
+    if (this.hoveredMesh) this.applyMeshAppearance(this.hoveredMesh);
   }
 
-  private getMeshUnderPoint(pointer: Vector2, camera: Camera, model: Group): Mesh | null {
+  private getHoveredMesh(pointer: Vector2, camera: Camera): Mesh | null {
+    const model = this.gltf.value()?.scene;
+    if (!model) return null;
+
     this.raycaster.setFromCamera(pointer, camera);
 
     const intersection = this.raycaster.intersectObject(model, true)[0];
     if (!intersection) return null;
-    if (!(intersection.object instanceof Mesh)) return null;
 
-    return intersection.object;
+    return intersection.object instanceof Mesh ? intersection.object : null;
+  }
+
+  private getFocusedMesh(pointer: Vector2, camera: Camera): Mesh | null {
+    if (!this.selectedMesh) return null;
+
+    this.raycaster.setFromCamera(pointer, camera);
+
+    const intersection = this.raycaster.intersectObject(this.selectedMesh, true)[0];
+    if (!intersection) return null;
+
+    return intersection.object instanceof Mesh ? intersection.object : null;
   }
 
   onModelPointerDown(event: NgtThreeEvent<PointerEvent>) {
     const object = event.object;
     if (!(object instanceof Mesh)) return;
 
-    this.selectMesh(object);
+    this.pointerDownPosition.set(
+      event.nativeEvent.clientX,
+      event.nativeEvent.clientY
+    )
+
+    this.pointerDownMesh = object;
+    this.isDragging = false;
+  }
+
+  onModelPointerMove(event: NgtThreeEvent<PointerEvent>) {
+    this.updateDragState(event);
+  }
+
+  onModelPointerUp(event: NgtThreeEvent<PointerEvent>) {
+    if (!this.pointerDownMesh) return;
+    if (!this.isDragging) this.selectMesh(this.pointerDownMesh);
+
+    this.pointerDownMesh = null;
+    this.isDragging = false;
+  }
+
+  private updateDragState(event: NgtThreeEvent<PointerEvent>) {
+    if (!this.pointerDownMesh && !this.pointerDownHotspot) return;
+
+    const dx = event.nativeEvent.clientX - this.pointerDownPosition.x;
+    const dy = event.nativeEvent.clientY - this.pointerDownPosition.y;
+
+    const distanceSquared = dx * dx + dy * dy;
+
+    if (distanceSquared > this.clickThreshold ** 2) this.isDragging = true;
+  }
+
+  private getMeshWorldCenter(mesh: Mesh): Vector3 {
+    this.meshBounds.setFromObject(mesh);
+    this.meshBounds.getCenter(this.meshCenter);
+
+    return this.meshCenter;
+  }
+
+  private focusCamera(mesh: Mesh) {
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    const camera = controls.object;
+
+    this.meshBounds.setFromObject(mesh);
+    this.meshBounds.getBoundingSphere(this.meshSphere);
+
+    const center = this.meshSphere.center;
+
+    this.cameraStart.copy(camera.position);
+
+    const direction = new Vector3().copy(camera.position).sub(controls.target).normalize();
+
+    if (!(camera instanceof PerspectiveCamera)) return;
+
+    const verticalFov = camera.fov * Math.PI / 180;
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+    const verticalDistance = this.meshSphere.radius / Math.sin(verticalFov / 2);
+    const horizontalDistance = this.meshSphere.radius / Math.sin(horizontalFov / 2);
+
+    const padding = 1.4;
+
+    const distance = Math.max(verticalDistance, horizontalDistance) * padding;
+
+    this.cameraEnd.copy(center).add(direction.multiplyScalar(distance));
+
+    this.cameraAnimationProgress = 0;
+    this.cameraAnimationStartTime = performance.now();
+  }
+
+  private updateCameraAnimation() {
+    if (this.cameraAnimationProgress >= 1) return;
+
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    const camera = controls.object;
+    const elapsed = performance.now() - this.cameraAnimationStartTime;
+    const progress = Math.min(elapsed / this.cameraAnimationDuration, 1);
+
+    const easedProgress = this.easeOutCubic(progress);
+
+    this.cameraAnimationProgress = progress;
+
+    camera.position.lerpVectors(this.cameraStart, this.cameraEnd, easedProgress);
+
+    controls.update();
+  }
+
+  private saveDefaultCameraState(camera: Camera) {
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    this.defaultCameraPosition.copy(camera.position);
+    this.defaultCameraTarget.copy(controls.target);
+
+    this.defaultCameraSaved = true;
+  }
+
+  private restoreCamera() {
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls || !this.defaultCameraSaved) return;
+
+    const camera = controls.object;
+
+    this.cameraStart.copy(camera.position);
+    this.cameraEnd.copy(this.defaultCameraPosition);
+
+    this.cameraAnimationProgress = 0;
+    this.cameraAnimationStartTime = performance.now();
+  }
+
+  private getHotspotForMesh(mesh: Mesh): Hotspot | null {
+    return this.hotspots().find(hotspot => hotspot.meshName === mesh.name) ?? null;
   }
 }

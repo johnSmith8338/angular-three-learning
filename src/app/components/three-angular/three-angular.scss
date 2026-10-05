@@ -23,6 +23,10 @@ ngt-canvas {
     position: absolute;
     inset: 0;
     pointer-events: none;
+
+    &.hidden {
+        display: none;
+    }
 }
 
 .html-marker {
@@ -86,4 +90,43 @@ ngt-canvas {
         font-size: 12px;
         line-height: 1.4;
     }
+}
+
+.focus-panel {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: min(600px, calc(100vw - 32px));
+    padding: 20px 56px 20px 20px;
+    background: rgba(20, 20, 20, 0.92);
+    color: white;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.focus-panel_title {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 20px;
+}
+
+.focus-panel_description {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.focus-panel_close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: white;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
 }

@@ -3,6 +3,7 @@ export interface Hotspot {
     position: [number, number, number];
     title: string;
     description: string;
+    meshName: string;
 }
 
 export interface ProjectedHotspot {
