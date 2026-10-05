@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, viewChild } from '@angular/core';
-import { beforeRender, extend, injectStore, NgtArgs } from 'angular-three';
-import { Box3, Camera, Group, PerspectiveCamera, Raycaster, Sphere, Vector3 } from 'three';
+import { beforeRender, extend, injectStore, NgtArgs, NgtThreeEvent } from 'angular-three';
+import { Box3, Camera, Color, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
@@ -74,6 +74,15 @@ export class ThreeAngularScene {
     () => '/models/antique-camera.glb'
   );
 
+  private hoveredMesh: Mesh | null = null;
+  private selectedMesh: Mesh | null = null;
+  private pointerDownMesh: Mesh | null = null;
+
+  private readonly originalMeshAppearence = new Map<Mesh, {
+    emissive: Color;
+    emissiveIntensity: number
+  }>
+
   constructor() {
     beforeRender(({ camera, size }) => {
       this.updateTargetAnimation();
@@ -88,10 +97,36 @@ export class ThreeAngularScene {
 
     effect(() => {
       const model = this.gltf.value()?.scene;
-      if (!model) return;
-      // this.logModelBounds(model);
+      if (!model || this.modelPrepared) return;
+
       this.prepareModel(model);
-    })
+    });
+
+    beforeRender((state) => {
+      const model = this.gltf.value()?.scene;
+      if (!model) return;
+
+      state.raycaster.setFromCamera(
+        state.pointer,
+        state.camera,
+      );
+
+      const intersection = state.raycaster.intersectObject(model, true,)[0];
+
+      if (!intersection) {
+        this.clearMeshHighlight();
+        return;
+      }
+
+      const object = intersection.object;
+
+      if (!(object instanceof Mesh)) {
+        this.clearMeshHighlight();
+        return;
+      }
+
+      this.highlightMesh(object);
+    });
   }
 
   private updateHotspots(camera: Camera, size: { width: number; height: number }) {
@@ -297,5 +332,105 @@ export class ThreeAngularScene {
     } else {
       camera.lookAt(0, 0, 0);
     }
+  }
+
+  private highlightMesh(mesh: Mesh): void {
+    if (this.hoveredMesh === mesh) return;
+
+    this.clearMeshHighlight();
+
+    if (!(mesh.material instanceof MeshStandardMaterial)) return;
+
+    this.rememberOriginalAppearance(mesh);
+
+    this.hoveredMesh = mesh;
+
+    this.applyMeshAppearance(mesh);
+  }
+
+  private clearMeshHighlight(): void {
+    if (!this.hoveredMesh) return;
+
+    const mesh = this.hoveredMesh;
+
+    this.hoveredMesh = null;
+
+    this.applyMeshAppearance(mesh);
+  }
+
+  private applyMeshAppearance(mesh: Mesh) {
+    if (!(mesh.material instanceof MeshStandardMaterial)) return;
+
+    this.rememberOriginalAppearance(mesh);
+
+    if (this.selectedMesh === mesh) {
+      mesh.material.emissive.set('#00ff00');
+      mesh.material.emissiveIntensity = 1;
+      return;
+    }
+
+    if (this.hoveredMesh === mesh) {
+      mesh.material.emissive.set('#ffff00');
+      mesh.material.emissiveIntensity = 1;
+      return;
+    }
+
+    const original = this.originalMeshAppearence.get(mesh);
+    if (!original) return;
+
+    mesh.material.emissive.copy(original.emissive);
+    mesh.material.emissiveIntensity = original.emissiveIntensity;
+  }
+
+  private rememberOriginalAppearance(mesh: Mesh) {
+    if (this.originalMeshAppearence.has(mesh)) return;
+    if (!(mesh.material instanceof MeshStandardMaterial)) return;
+
+    this.originalMeshAppearence.set(mesh, {
+      emissive: mesh.material.emissive.clone(),
+      emissiveIntensity: mesh.material.emissiveIntensity
+    })
+  }
+
+  private selectMesh(mesh: Mesh) {
+    if (this.selectedMesh === mesh) {
+      this.deselectMesh();
+      return;
+    }
+
+    if (this.selectedMesh) {
+      const previousMesh = this.selectedMesh;
+      this.selectedMesh = null;
+      this.applyMeshAppearance(previousMesh);
+    }
+
+    this.rememberOriginalAppearance(mesh);
+    this.selectedMesh = mesh;
+    this.applyMeshAppearance(mesh);
+  }
+
+  private deselectMesh() {
+    if (!this.selectedMesh) return;
+
+    const mesh = this.selectedMesh;
+    this.selectedMesh = null;
+    this.applyMeshAppearance(mesh);
+  }
+
+  private getMeshUnderPoint(pointer: Vector2, camera: Camera, model: Group): Mesh | null {
+    this.raycaster.setFromCamera(pointer, camera);
+
+    const intersection = this.raycaster.intersectObject(model, true)[0];
+    if (!intersection) return null;
+    if (!(intersection.object instanceof Mesh)) return null;
+
+    return intersection.object;
+  }
+
+  onModelPointerDown(event: NgtThreeEvent<PointerEvent>) {
+    const object = event.object;
+    if (!(object instanceof Mesh)) return;
+
+    this.selectMesh(object);
   }
 }

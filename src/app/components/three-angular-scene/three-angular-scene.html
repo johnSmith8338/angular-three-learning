@@ -4,7 +4,7 @@
 <ngt-directional-light [position]="[-4,1,2]" [intensity]="1" />
 <ngt-directional-light [position]="[0,3,-4]" [intensity]="0.4" />
 
-<ngt-group #modelRoot>
+<ngt-group #modelRoot (pointerdown)="onModelPointerDown($event)">
     @if (gltf.value(); as gltf) {
         <ngt-primitive *args="[gltf.scene]" />
     }
