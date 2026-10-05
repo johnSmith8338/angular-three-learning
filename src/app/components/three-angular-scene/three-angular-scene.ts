@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { beforeRender, extend, injectStore, NgtArgs, NgtThreeEvent } from 'angular-three';
 import { Box3, Camera, Color, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
@@ -53,6 +53,7 @@ export class ThreeAngularScene {
 
   private readonly hotspotWorldPosition = new Vector3();
   private readonly hotspotNdcPosition = new Vector3();
+  private readonly hotspotMeshSize = new Vector3();
   private readonly cameraWorldPosition = new Vector3();
 
   private readonly raycaster = new Raycaster();
@@ -64,8 +65,6 @@ export class ThreeAngularScene {
   private readonly meshBounds = new Box3();
   private readonly meshCenter = new Vector3();
   private readonly meshSphere = new Sphere();
-
-  private readonly sceneCenter = new Vector3(0, 0, 0);
 
   // анимация переключения камеры с объекта на target
   private readonly targetStart = new Vector3();
@@ -79,7 +78,7 @@ export class ThreeAngularScene {
 
   private defaultCameraSaved = false;
 
-  private modelPrepared = false;
+  readonly modelPrepared = signal(false);
   private cameraFramed = false;
   private hotspotUpdateScheduled = false;
 
@@ -118,7 +117,7 @@ export class ThreeAngularScene {
       this.updateTargetAnimation();
       this.updateCameraAnimation();
 
-      if (!this.cameraFramed && this.modelPrepared) {
+      if (!this.cameraFramed && this.modelPrepared()) {
         this.frameCamera(camera);
         this.saveDefaultCameraState(camera);
         this.cameraFramed = true;
@@ -129,7 +128,7 @@ export class ThreeAngularScene {
 
     effect(() => {
       const model = this.gltf.value()?.scene;
-      if (!model || this.modelPrepared) return;
+      if (!model || this.modelPrepared()) return;
 
       this.prepareModel(model);
     });
@@ -154,7 +153,6 @@ export class ThreeAngularScene {
   }
 
   private updateHotspots(camera: Camera, size: { width: number; height: number }) {
-    const modelRoot = this.modelRoot().nativeElement;
     const elements = this.hotspotElements();
     const model = this.gltf.value()?.scene;
     if (!model) return;
@@ -165,14 +163,7 @@ export class ThreeAngularScene {
       const element = elements.get(hotspot.id);
       if (!element) return;
 
-      this.hotspotWorldPosition.set(
-        hotspot.position[0],
-        hotspot.position[1],
-        hotspot.position[2]
-      )
-
-      // local groupB to world
-      modelRoot.localToWorld(this.hotspotWorldPosition);
+      this.getHotspotWorldPosition(hotspot);
 
       // world to ndc (normalized device coordinates)
       this.hotspotNdcPosition.copy(this.hotspotWorldPosition).project(camera);
@@ -220,18 +211,50 @@ export class ThreeAngularScene {
   }
 
   private getHotspotWorldPosition(hotspot: Hotspot): Vector3 {
-    this.hotspotWorldPosition.set(
-      hotspot.position[0],
-      hotspot.position[1],
-      hotspot.position[2],
-    )
+    const mesh = this.getMeshForHotspot(hotspot);
+    if (!mesh) return this.hotspotWorldPosition.set(0, 0, 0);
 
-    this.modelRoot().nativeElement.localToWorld(this.hotspotWorldPosition);
+    this.meshBounds.setFromObject(mesh);
+    this.meshBounds.getCenter(this.meshCenter);
+    this.meshBounds.getSize(this.hotspotMeshSize);
+
+    const offset = this.hotspotMeshSize.length() * 0.05;
+
+    switch (hotspot.anchor) {
+      case 'top':
+        this.meshCenter.y += this.hotspotMeshSize.y / 2 + offset;
+        break;
+      case 'bottom':
+        this.meshCenter.y -= this.hotspotMeshSize.y / 2 + offset;
+        break;
+      case 'left':
+        this.meshCenter.x -= this.hotspotMeshSize.x / 2 + offset;
+        break;
+      case 'right':
+        this.meshCenter.x += this.hotspotMeshSize.x / 2 + offset;
+        break;
+      case 'front':
+        this.meshCenter.z += this.hotspotMeshSize.z / 2 + offset;
+        break;
+      case 'back':
+        this.meshCenter.z -= this.hotspotMeshSize.z / 2 + offset;
+        break;
+    }
+
+    this.hotspotWorldPosition.copy(this.meshCenter);
 
     return this.hotspotWorldPosition;
   }
 
+  getHotspotLocalPosition(hotspot: Hotspot): Vector3 {
+    const worldPosition = this.getHotspotWorldPosition(hotspot);
+
+    return this.modelRoot().nativeElement.worldToLocal(worldPosition.clone());
+  }
+
   onHotspotPointerDown(hotspot: Hotspot, event: NgtThreeEvent<PointerEvent>) {
+    event.stopPropagation();
+
     this.pointerDownPosition.set(
       event.nativeEvent.clientX,
       event.nativeEvent.clientY
@@ -242,10 +265,13 @@ export class ThreeAngularScene {
   }
 
   onHotspotPointerMove(event: NgtThreeEvent<PointerEvent>) {
+    event.stopPropagation();
     this.updateDragState(event);
   }
 
   onHotspotPointerUp(event: NgtThreeEvent<PointerEvent>) {
+    event.stopPropagation();
+
     if (!this.pointerDownHotspot) return;
     if (!this.isDragging) this.selectHotspot(this.pointerDownHotspot);
 
@@ -262,7 +288,6 @@ export class ThreeAngularScene {
   }
 
   clearHotspotSelection() {
-    this.animateTargetTo(this.sceneCenter);
     this.hotspotDeselected.emit();
   }
 
@@ -272,9 +297,6 @@ export class ThreeAngularScene {
       return;
     }
 
-    const worldPosition = this.getHotspotWorldPosition(hotspot);
-
-    this.animateTargetTo(worldPosition);
     this.hotspotSelected.emit(hotspot);
   }
 
@@ -343,7 +365,7 @@ export class ThreeAngularScene {
     this.modelSphere.radius = modelRadius;
     this.modelSphere.center.set(0, 0, 0);
 
-    this.modelPrepared = true;
+    this.modelPrepared.set(true);
   }
 
   private frameCamera(camera: Camera) {
@@ -439,9 +461,11 @@ export class ThreeAngularScene {
   }
 
   private selectMesh(mesh: Mesh) {
-    if (this.selectedMesh === mesh) {
-      this.exitFocusMode();
-      this.meshDeselected.emit();
+    if (this.isFocusMode) {
+      if (this.selectedMesh === mesh) {
+        this.exitFocusMode();
+        this.meshDeselected.emit();
+      }
       return;
     }
 
@@ -658,5 +682,14 @@ export class ThreeAngularScene {
 
   private getHotspotForMesh(mesh: Mesh): Hotspot | null {
     return this.hotspots().find(hotspot => hotspot.meshName === mesh.name) ?? null;
+  }
+
+  private getMeshForHotspot(hotspot: Hotspot): Mesh | null {
+    const model = this.gltf.value()?.scene;
+    if (!model) return null;
+
+    const object = model.getObjectByName(hotspot.meshName);
+
+    return object instanceof Mesh ? object : null;
   }
 }

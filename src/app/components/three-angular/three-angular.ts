@@ -24,17 +24,17 @@ export class ThreeAngular {
   readonly hotspots: Hotspot[] = [
     {
       id: 1,
-      position: [-0.5, 0.5, 0.55],
       title: 'Заголовок 1',
       description: 'Описание для заголовка 1',
-      meshName: 'camera'
+      meshName: 'camera',
+      anchor: 'top'
     },
     {
       id: 2,
-      position: [0.5, 0.2, 0.55],
       title: 'Заголовок 2',
       description: 'Описание для заголовка 2',
-      meshName: 'tripod'
+      meshName: 'tripod',
+      anchor: 'right'
     },
   ]
 

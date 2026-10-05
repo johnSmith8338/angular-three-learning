@@ -1,14 +1,9 @@
 export interface Hotspot {
     id: number;
-    position: [number, number, number];
     title: string;
     description: string;
     meshName: string;
+    anchor: HotspotAnchor;
 }
 
-export interface ProjectedHotspot {
-    id: number;
-    title: string;
-    description: string;
-    position: [number, number];
-}
+export type HotspotAnchor = 'top' | 'bottom' | 'left' | 'right' | 'front' | 'back';
