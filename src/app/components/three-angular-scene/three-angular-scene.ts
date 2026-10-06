@@ -91,7 +91,7 @@ export class ThreeAngularScene {
   private cameraAnimationStartTime = 0;
 
   readonly gltf = gltfResource(
-    () => '/models/antique-camera.glb'
+    () => 'models/antique-camera.glb'
   );
 
   private hoveredMesh: Mesh | null = null;
