@@ -9,12 +9,6 @@
             <app-three-angular-scene
                 [hotspots]="hotspots"
                 [hotspotElements]="hotspotElementMap()"
-                [selectedHotspotId]="selectedHotspotId()"
-                (hotspotSelected)="onHotspotSelected($event)"
-                (hotspotDeselected)="onHotspotDeselected()"
-                [hoveredHotspotId]="hoveredHotspotId()"
-                (hotspotPointerEnter)="onHotspotPointerEnter($event)"
-                (hotspotPointerLeave)="onHotspotPointerLeave()"
                 (meshSelected)="onMeshSelected($event)"
                 (meshDeselected)="onMeshDeselected()"
                 [focusMode]="focusMode()"
@@ -30,6 +24,9 @@
                 [class.hovered]="hoveredHotspotId()===hotspot.id"
                 [attr.data-hotspot-id]="hotspot.id"
                 [attr.aria-label]="hotspot.title"
+                (click)="onHotspotClick(hotspot)"
+                (pointerenter)="onHotspotPointerEnter(hotspot)"
+                (pointerleave)="onHotspotPointerLeave()"
             >
                 <span class="html-marker_dot"></span>
                 @if (selectedHotspotId()===hotspot.id) {

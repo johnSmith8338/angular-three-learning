@@ -31,37 +31,43 @@ ngt-canvas {
 
 .html-marker {
     position: absolute;
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     padding: 0;
+    border-color: transparent;
+    outline: transparent;
+    outline-offset: 2px;
     transform: translate(-50%, -50%);
+    transform-origin: 50% 50%;
     border-radius: 50%;
     background: transparent;
-    pointer-events: none;
     will-change: transform;
+    pointer-events: auto;
 
     &.selected {
         .html-marker_dot {
-            width: 16px;
-            height: 16px;
+            background: #ffd900;
+            outline: 2px solid #ffd900;
+            outline-offset: 4px;
         }
     }
 
     &.hovered {
         .html-marker_dot {
-            width: 14px;
-            height: 14px;
+            background: #ffd900;
+            outline: 2px solid #ffd900;
+            outline-offset: 4px;
         }
     }
 }
 
 .html-marker_dot {
     display: block;
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    background: #ffd900;
-    transition: width 0.18s ease, height 0.18s ease;
+    background: #ff0000;
+    transition: background 0.18s ease, outline 0.18s ease;
 }
 
 .html-marker_tooltip {

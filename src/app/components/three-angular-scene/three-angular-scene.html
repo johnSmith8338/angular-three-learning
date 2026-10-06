@@ -12,26 +12,6 @@
     @if (gltf.value(); as gltf) {
         <ngt-primitive *args="[gltf.scene]" />
     }
-
-    <!-- красные объемные сферы -->
-     @if (modelPrepared()) {
-         @for (hotspot of hotspots(); track hotspot.id) {
-             <ngt-mesh 
-                 [position]="getHotspotLocalPosition(hotspot)"
-                 [scale]="selectedHotspotId()===hotspot.id?[1.4,1.4,1.4]:hoveredHotspotId()===hotspot.id?[1.2,1.2,1.2]:[1,1,1]"
-                 (pointerdown)="onHotspotPointerDown(hotspot,$event)"
-                 (pointermove)="onHotspotPointerMove($event)"
-                 (pointerup)="onHotspotPointerUp($event)"
-                 (pointerover)="onHotspotPointerEnter(hotspot)"
-                 (pointerout)="onHotspotPointerLeave()"
-             >
-                 <ngt-sphere-geometry *args="[0.2,16,16]" />
-                 <ngt-mesh-standard-material 
-                     [color]="selectedHotspotId()===hotspot.id?'#ffff00':hoveredHotspotId()===hotspot.id?'#ffffff':'#ff0000'" 
-                 />
-             </ngt-mesh>
-         }
-     }
 </ngt-group>
 
 <ngts-orbit-controls 

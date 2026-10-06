@@ -49,20 +49,21 @@ export class ThreeAngular {
     }))
   })
 
-  onHotspotSelected(hotspot: Hotspot) {
-    this.selectedHotspotId.set(hotspot.id);
-  }
-
-  onHotspotDeselected() {
-    this.selectedHotspotId.set(null);
-  }
-
   onHotspotPointerEnter(hotspot: Hotspot): void {
     this.hoveredHotspotId.set(hotspot.id);
   }
 
   onHotspotPointerLeave(): void {
     this.hoveredHotspotId.set(null);
+  }
+
+  onHotspotClick(hotspot: Hotspot) {
+    if (this.selectedHotspotId() === hotspot.id) {
+      this.selectedHotspotId.set(null);
+      return;
+    }
+
+    this.selectedHotspotId.set(hotspot.id);
   }
 
   onMeshSelected(hotspot: Hotspot): void {

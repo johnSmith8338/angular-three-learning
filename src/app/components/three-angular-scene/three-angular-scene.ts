@@ -37,16 +37,7 @@ export class ThreeAngularScene {
   readonly hotspots = input.required<Hotspot[]>();
   readonly hotspotElements = input<ReadonlyMap<number, HTMLButtonElement>>(new Map());
 
-  readonly selectedHotspotId = input<number | null>(null);
-  readonly hoveredHotspotId = input<number | null>(null);
-
   readonly focusMode = input(false);
-
-  readonly hotspotSelected = output<Hotspot>();
-  readonly hotspotDeselected = output<void>();
-
-  readonly hotspotPointerEnter = output<Hotspot>();
-  readonly hotspotPointerLeave = output<void>();
 
   readonly meshSelected = output<Hotspot>();
   readonly meshDeselected = output<void>();
@@ -79,6 +70,7 @@ export class ThreeAngularScene {
   private defaultCameraSaved = false;
 
   readonly modelPrepared = signal(false);
+
   private cameraFramed = false;
   private hotspotUpdateScheduled = false;
 
@@ -244,60 +236,6 @@ export class ThreeAngularScene {
     this.hotspotWorldPosition.copy(this.meshCenter);
 
     return this.hotspotWorldPosition;
-  }
-
-  getHotspotLocalPosition(hotspot: Hotspot): Vector3 {
-    const worldPosition = this.getHotspotWorldPosition(hotspot);
-
-    return this.modelRoot().nativeElement.worldToLocal(worldPosition.clone());
-  }
-
-  onHotspotPointerDown(hotspot: Hotspot, event: NgtThreeEvent<PointerEvent>) {
-    event.stopPropagation();
-
-    this.pointerDownPosition.set(
-      event.nativeEvent.clientX,
-      event.nativeEvent.clientY
-    )
-
-    this.pointerDownHotspot = hotspot;
-    this.isDragging = false;
-  }
-
-  onHotspotPointerMove(event: NgtThreeEvent<PointerEvent>) {
-    event.stopPropagation();
-    this.updateDragState(event);
-  }
-
-  onHotspotPointerUp(event: NgtThreeEvent<PointerEvent>) {
-    event.stopPropagation();
-
-    if (!this.pointerDownHotspot) return;
-    if (!this.isDragging) this.selectHotspot(this.pointerDownHotspot);
-
-    this.pointerDownHotspot = null;
-    this.isDragging = false;
-  }
-
-  onHotspotPointerEnter(hotspot: Hotspot): void {
-    this.hotspotPointerEnter.emit(hotspot);
-  }
-
-  onHotspotPointerLeave(): void {
-    this.hotspotPointerLeave.emit();
-  }
-
-  clearHotspotSelection() {
-    this.hotspotDeselected.emit();
-  }
-
-  private selectHotspot(hotspot: Hotspot) {
-    if (this.selectedHotspotId() === hotspot.id) {
-      this.clearHotspotSelection();
-      return;
-    }
-
-    this.hotspotSelected.emit(hotspot);
   }
 
   private animateTargetTo(position: Vector3) {
