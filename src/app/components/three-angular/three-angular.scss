@@ -99,7 +99,7 @@ ngt-canvas {
 }
 
 .focus-panel {
-    position: fixed;
+    position: absolute;
     right: 24px;
     bottom: 24px;
     width: min(600px, calc(100vw - 32px));

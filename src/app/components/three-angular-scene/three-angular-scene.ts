@@ -104,6 +104,10 @@ export class ThreeAngularScene {
   private isDragging = false;
   private readonly clickThreshold = 5;
 
+  private hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingHoveredMesh: Mesh | null = null;
+  private readonly hoverDelay = 250;
+
   constructor() {
     beforeRender(({ camera, size }) => {
       this.updateTargetAnimation();
@@ -136,6 +140,7 @@ export class ThreeAngularScene {
         this.getHoveredMesh(state.pointer, state.camera)
 
       if (!mesh) {
+        this.clearHoverTimer();
         this.clearMeshHighlight();
         return;
       }
@@ -340,16 +345,39 @@ export class ThreeAngularScene {
 
   private highlightMesh(mesh: Mesh): void {
     if (this.hoveredMesh === mesh) return;
+    if (this.pendingHoveredMesh === mesh) return;
 
-    this.clearMeshHighlight();
+    this.clearHoverTimer();
 
-    if (!(mesh.material instanceof MeshStandardMaterial)) return;
+    this.pendingHoveredMesh = mesh;
 
-    this.rememberOriginalAppearance(mesh);
+    this.hoverTimer = setTimeout(() => {
+      if (this.pendingHoveredMesh !== mesh) return;
 
-    this.hoveredMesh = mesh;
+      this.pendingHoveredMesh = null;
+      this.hoverTimer = null;
 
-    this.applyMeshAppearance(mesh);
+      if (this.isFocusMode) return;
+
+      this.clearMeshHighlight();
+
+      if (!(mesh.material instanceof MeshStandardMaterial)) return;
+
+      this.rememberOriginalAppearance(mesh);
+
+      this.hoveredMesh = mesh;
+
+      this.applyMeshAppearance(mesh);
+    }, this.hoverDelay)
+  }
+
+  private clearHoverTimer() {
+    if (this.hoverTimer !== null) {
+      clearTimeout(this.hoverTimer);
+      this.hoverTimer = null;
+    }
+
+    this.pendingHoveredMesh = null;
   }
 
   private clearMeshHighlight(): void {
