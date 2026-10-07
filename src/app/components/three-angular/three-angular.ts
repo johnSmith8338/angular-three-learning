@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, ElementRef, signal, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, signal, viewChild, viewChildren } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
 import { ThreeAngularScene } from '../three-angular-scene/three-angular-scene';
 import { Hotspot } from '../../models/hotspot.interface';
+
+type ZoomDirection = 'in' | 'out';
 
 @Component({
   selector: 'app-three-angular',
@@ -15,11 +17,14 @@ import { Hotspot } from '../../models/hotspot.interface';
 })
 export class ThreeAngular {
   readonly hotspotElements = viewChildren<ElementRef<HTMLButtonElement>>('hotspotElement');
+  readonly scene = viewChild.required(ThreeAngularScene);
 
   readonly selectedHotspotId = signal<number | null>(null);
   readonly hoveredHotspotId = signal<number | null>(null);
   readonly selectedMeshHotspot = signal<Hotspot | null>(null);
   readonly focusMode = signal(false);
+
+  private zoomTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly hotspots: Hotspot[] = [
     {
@@ -74,5 +79,40 @@ export class ThreeAngular {
   onMeshDeselected(): void {
     this.selectedMeshHotspot.set(null);
     this.focusMode.set(false);
+  }
+
+  startZoom(direction: ZoomDirection, event: PointerEvent) {
+    const button = event.currentTarget;
+    if (button instanceof HTMLElement) button.setPointerCapture(event.pointerId);
+
+    this.stopZoom();
+
+    this.zoomOnce(direction);
+
+    this.zoomTimer = setInterval(() => {
+      this.zoomOnce(direction);
+    }, 80)
+  }
+
+  stopZoom(event?: PointerEvent) {
+    if (event) {
+      const button = event.currentTarget;
+      if (button instanceof HTMLElement && button.hasPointerCapture(event.pointerId)) {
+        button.releasePointerCapture(event.pointerId)
+      }
+    }
+
+    if (this.zoomTimer === null) return;
+
+    clearInterval(this.zoomTimer);
+    this.zoomTimer === null;
+  }
+
+  private zoomOnce(direction: ZoomDirection) {
+    if (direction === 'in') {
+      this.scene().zoomIn();
+    } else {
+      this.scene().zoomOut();
+    }
   }
 }

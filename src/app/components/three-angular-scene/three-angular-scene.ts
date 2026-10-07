@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { beforeRender, extend, injectStore, NgtArgs, NgtThreeEvent } from 'angular-three';
-import { Box3, Camera, Color, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
+import { Box3, Camera, Color, Group, MathUtils, Mesh, MeshStandardMaterial, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
@@ -31,6 +31,7 @@ export class ThreeAngularScene {
   private readonly store = injectStore();
 
   private readonly modelRoot = viewChild.required<ElementRef<Group>>('modelRoot');
+  private readonly orbitControls = viewChild.required('orbitControls');
 
   readonly Math = Math;
 
@@ -657,5 +658,21 @@ export class ThreeAngularScene {
     const object = model.getObjectByName(hotspot.meshName);
 
     return object instanceof Mesh ? object : null;
+  }
+
+  zoomIn() {
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    controls.dollyOut(1.05);
+    controls.update();
+  }
+
+  zoomOut() {
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    controls.dollyIn(1.05);
+    controls.update();
   }
 }
