@@ -109,6 +109,22 @@ export class ThreeAngularScene {
   private pendingHoveredMesh: Mesh | null = null;
   private readonly hoverDelay = 250;
 
+  private projectedPoint = new Vector3();
+  private readonly modelScreenBounds = {
+    minX: Infinity,
+    maxX: -Infinity,
+    minY: Infinity,
+    maxY: -Infinity
+  }
+
+  private readonly modelCenterNdc = new Vector3();
+
+  private readonly cameraRight = new Vector3();
+  private readonly cameraUp = new Vector3();
+  private readonly cameraForward = new Vector3();
+
+  private readonly panCorrection = new Vector3();
+
   constructor() {
     beforeRender(({ camera, size }) => {
       this.updateTargetAnimation();
@@ -121,6 +137,8 @@ export class ThreeAngularScene {
       }
 
       this.scheduleHotspotUpdate(camera, size);
+
+      this.clampPan(camera);
     })
 
     effect(() => {
@@ -396,12 +414,6 @@ export class ThreeAngularScene {
 
     this.rememberOriginalAppearance(mesh);
 
-    // if (this.selectedMesh === mesh) {
-    //   mesh.material.emissive.set('#00ff00');
-    //   mesh.material.emissiveIntensity = 1;
-    //   return;
-    // }
-
     if (this.hoveredMesh === mesh && !this.isFocusMode) {
       mesh.material.emissive.set('#ffff00');
       mesh.material.emissiveIntensity = 1;
@@ -673,6 +685,92 @@ export class ThreeAngularScene {
     if (!controls) return;
 
     controls.dollyIn(1.05);
+    controls.update();
+  }
+
+  private updateModelScreenBounds(camera: Camera) {
+    const model = this.gltf.value()?.scene;
+    if (!model) return;
+
+    this.meshBounds.setFromObject(model);
+
+    const min = this.meshBounds.min;
+    const max = this.meshBounds.max;
+
+    const corners = [
+      [min.x, min.y, min.z],
+      [min.x, min.y, max.z],
+      [min.x, max.y, min.z],
+      [min.x, max.y, max.z],
+      [max.x, min.y, min.z],
+      [max.x, min.y, max.z],
+      [max.x, max.y, min.z],
+      [max.x, max.y, max.z]
+    ]
+
+    this.modelScreenBounds.minX = Infinity;
+    this.modelScreenBounds.maxX = -Infinity;
+    this.modelScreenBounds.minY = Infinity;
+    this.modelScreenBounds.maxY = -Infinity;
+
+    for (const [x, y, z] of corners) {
+      this.projectedPoint.set(x, y, z).project(camera);
+
+      this.modelScreenBounds.minX = Math.min(this.modelScreenBounds.minX, this.projectedPoint.x);
+      this.modelScreenBounds.maxX = Math.max(this.modelScreenBounds.maxX, this.projectedPoint.x);
+      this.modelScreenBounds.minY = Math.min(this.modelScreenBounds.minY, this.projectedPoint.y);
+      this.modelScreenBounds.maxY = Math.max(this.modelScreenBounds.maxY, this.projectedPoint.y);
+    }
+  }
+
+  private clampPan(camera: Camera) {
+    if (this.isFocusMode) return;
+    if (this.targetAnimationProgress < 1 || this.cameraAnimationProgress < 1) return;
+
+    const controls = this.store.controls() as OrbitControls | null;
+    if (!controls || !(camera instanceof PerspectiveCamera)) return;
+
+    this.modelCenterNdc.set(0, 0, 0).project(camera);
+
+    let correctionX = 0;
+    let correctionY = 0;
+
+    if (this.modelCenterNdc.x > 1) {
+      correctionX = this.modelCenterNdc.x - 1;
+    } else if (this.modelCenterNdc.x < -1) {
+      correctionX = this.modelCenterNdc.x + 1;
+    }
+
+    if (this.modelCenterNdc.y > 1) {
+      correctionY = this.modelCenterNdc.y - 1;
+    } else if (this.modelCenterNdc.y < -1) {
+      correctionY = this.modelCenterNdc.y + 1;
+    }
+
+    if (correctionX === 0 && correctionY === 0) return;
+
+    // Размер видимой области на расстоянии controls.target
+    const distance = camera.position.distanceTo(controls.target);
+    const halfHeight = distance * Math.tan(camera.fov * Math.PI / 360);
+    const halfWidth = halfHeight * camera.aspect;
+
+    // Направления локальных осей камеры в мировых координатах
+    camera.updateMatrixWorld();
+    camera.matrixWorld.extractBasis(
+      this.cameraRight,
+      this.cameraUp,
+      this.cameraForward
+    )
+
+    // Переводим коррекцию из NDC в мировое смещение
+    this.panCorrection.copy(this.cameraRight)
+      .multiplyScalar(correctionX * halfWidth)
+      .addScaledVector(this.cameraUp, correctionY * halfHeight)
+
+    // Перемещаем камеру и её target вместе
+    camera.position.add(this.panCorrection);
+    controls.target.add(this.panCorrection);
+
     controls.update();
   }
 }

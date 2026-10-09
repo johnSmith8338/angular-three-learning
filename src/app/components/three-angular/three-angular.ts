@@ -105,7 +105,7 @@ export class ThreeAngular {
     if (this.zoomTimer === null) return;
 
     clearInterval(this.zoomTimer);
-    this.zoomTimer === null;
+    this.zoomTimer = null;
   }
 
   private zoomOnce(direction: ZoomDirection) {
