@@ -115,4 +115,8 @@ export class ThreeAngular {
       this.scene().zoomOut();
     }
   }
+
+  resetCamera() {
+    this.scene().resetCamera();
+  }
 }

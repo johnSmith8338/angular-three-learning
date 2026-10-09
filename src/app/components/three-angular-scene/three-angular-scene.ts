@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import { beforeRender, extend, injectStore, NgtArgs, NgtThreeEvent } from 'angular-three';
-import { Box3, Camera, Color, Group, MathUtils, Mesh, MeshStandardMaterial, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
+import { Box3, Camera, Color, Group, Mesh, MeshStandardMaterial, Object3D, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
@@ -13,7 +13,8 @@ extend({
   PerspectiveCamera,
   Raycaster,
   Sphere,
-  Vector3
+  Vector3,
+  Object3D
 })
 
 @Component({
@@ -109,14 +110,6 @@ export class ThreeAngularScene {
   private pendingHoveredMesh: Mesh | null = null;
   private readonly hoverDelay = 250;
 
-  private projectedPoint = new Vector3();
-  private readonly modelScreenBounds = {
-    minX: Infinity,
-    maxX: -Infinity,
-    minY: Infinity,
-    maxY: -Infinity
-  }
-
   private readonly modelCenterNdc = new Vector3();
 
   private readonly cameraRight = new Vector3();
@@ -179,6 +172,12 @@ export class ThreeAngularScene {
       const element = elements.get(hotspot.id);
       if (!element) return;
 
+      const mesh = this.getMeshForHotspot(hotspot);
+      if (!mesh || !this.isMeshVisible(mesh)) {
+        element.style.opacity = '0';
+        return;
+      }
+
       this.getHotspotWorldPosition(hotspot);
 
       // world to ndc (normalized device coordinates)
@@ -190,16 +189,24 @@ export class ThreeAngularScene {
         return;
       };
 
-      this.rayDirection
-        .copy(this.hotspotWorldPosition)
-        .sub(this.cameraWorldPosition)
-        .normalize()
+      this.rayDirection.copy(this.hotspotWorldPosition).sub(this.cameraWorldPosition).normalize();
 
       this.raycaster.set(this.cameraWorldPosition, this.rayDirection);
 
       const distanceToHotspot = this.cameraWorldPosition.distanceTo(this.hotspotWorldPosition);
 
-      const firstIntersection = this.raycaster.intersectObject(model, true)[0];
+      const intersections = this.raycaster.intersectObject(model, true);
+      const firstIntersection = intersections.find(intersection => {
+        const object = intersection.object;
+        if (!(object instanceof Mesh)) return false;
+        if (!this.isMeshVisible(object)) return false;
+
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        const materialIndex = intersection.face?.materialIndex ?? 0;
+        const material = materials[materialIndex];
+
+        return !!material && material.visible && material.opacity > 0.001;
+      })
 
       const occlusionEpsilon = 0.01;
       const isOccluded = firstIntersection !== undefined && firstIntersection.distance < distanceToHotspot - occlusionEpsilon;
@@ -688,41 +695,6 @@ export class ThreeAngularScene {
     controls.update();
   }
 
-  private updateModelScreenBounds(camera: Camera) {
-    const model = this.gltf.value()?.scene;
-    if (!model) return;
-
-    this.meshBounds.setFromObject(model);
-
-    const min = this.meshBounds.min;
-    const max = this.meshBounds.max;
-
-    const corners = [
-      [min.x, min.y, min.z],
-      [min.x, min.y, max.z],
-      [min.x, max.y, min.z],
-      [min.x, max.y, max.z],
-      [max.x, min.y, min.z],
-      [max.x, min.y, max.z],
-      [max.x, max.y, min.z],
-      [max.x, max.y, max.z]
-    ]
-
-    this.modelScreenBounds.minX = Infinity;
-    this.modelScreenBounds.maxX = -Infinity;
-    this.modelScreenBounds.minY = Infinity;
-    this.modelScreenBounds.maxY = -Infinity;
-
-    for (const [x, y, z] of corners) {
-      this.projectedPoint.set(x, y, z).project(camera);
-
-      this.modelScreenBounds.minX = Math.min(this.modelScreenBounds.minX, this.projectedPoint.x);
-      this.modelScreenBounds.maxX = Math.max(this.modelScreenBounds.maxX, this.projectedPoint.x);
-      this.modelScreenBounds.minY = Math.min(this.modelScreenBounds.minY, this.projectedPoint.y);
-      this.modelScreenBounds.maxY = Math.max(this.modelScreenBounds.maxY, this.projectedPoint.y);
-    }
-  }
-
   private clampPan(camera: Camera) {
     if (this.isFocusMode) return;
     if (this.targetAnimationProgress < 1 || this.cameraAnimationProgress < 1) return;
@@ -772,5 +744,31 @@ export class ThreeAngularScene {
     controls.target.add(this.panCorrection);
 
     controls.update();
+  }
+
+  resetCamera() {
+    if (this.isFocusMode) {
+      this.exitFocusMode();
+      this.meshDeselected.emit();
+      return;
+    }
+
+    this.animateTargetTo(this.defaultCameraTarget);
+    this.restoreCamera();
+  }
+
+  private isMeshVisible(mesh: Mesh): boolean {
+    let current: Object3D | null = mesh;
+
+    // проверяем меш и его родителей
+    while (current) {
+      if (!current.visible) return false;
+      current = current.parent;
+    }
+
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+
+    // меш считается видимым, если у него есть хотябы один видимый материал с ненулевой прозрачностью
+    return materials.some(material => material.visible && material.opacity > 0.001);
   }
 }
