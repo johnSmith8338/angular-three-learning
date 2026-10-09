@@ -154,3 +154,42 @@ ngt-canvas {
     cursor: pointer;
     user-select: none;
 }
+
+.scene-status {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    padding: 24px;
+    background: rgb(20 20 20 / 72%);
+    color: white;
+    text-align: center;
+
+    &_spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgb(255 255 255 / 25%);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: scene-spin 0.8s linear infinite;
+    }
+
+    button {
+        padding: 10px 16px;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+}
+
+@keyframes scene-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

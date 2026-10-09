@@ -33,6 +33,9 @@ export class ThreeAngular {
   readonly selectedMeshHotspot = signal<Hotspot | null>(null);
   readonly focusMode = signal(false);
 
+  readonly modelLoading = signal(true);
+  readonly modelError = signal<unknown>(null);
+
   private zoomTimer: ReturnType<typeof setInterval> | null = null;
 
   private tooltipPositionFrame: number | null = null;
@@ -161,6 +164,18 @@ export class ThreeAngular {
     if (this.tooltipPositionFrame === null) return;
     cancelAnimationFrame(this.tooltipPositionFrame);
     this.tooltipPositionFrame = null;
+  }
+
+  onModelLoadStateChange(state: {
+    isLoading: boolean;
+    error: unknown;
+  }) {
+    this.modelLoading.set(state.isLoading);
+    this.modelError.set(state.error ?? null);
+  }
+
+  retryModelLoad() {
+    this.scene().reloadModel();
   }
 
   readonly hotspots: Hotspot[] = [

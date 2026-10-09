@@ -1,10 +1,18 @@
 <div class="scene-container">
-    <ngt-canvas 
-        [camera]="{
-            position:[0,0,5],
-            fov:75
-        }"
-    >
+    @if (modelLoading()) {
+        <div class="scene-status" role="status" aria-live="polite">
+            <span class="scene-status_spinner"></span>
+            <span>Загрузка 3D-модели...</span>
+        </div>
+    }@else if (modelError()) {
+        <div class="scene-status scene-status_error" role="alert">
+            <strong>Не удалось загрузить 3D-модель</strong>
+            <span>Проверьте соединение и попробуйте еще раз</span>
+            <button type="button" (click)="scene().gltf.reload()">Повторить</button>
+        </div>
+    }
+
+    <ngt-canvas [camera]="{position:[0,0,5], fov:75}">
         <ng-template canvasContent>
             <app-three-angular-scene
                 [hotspots]="hotspots"
@@ -12,6 +20,7 @@
                 (meshSelected)="onMeshSelected($event)"
                 (meshDeselected)="onMeshDeselected()"
                 [focusMode]="focusMode()"
+                (modelLoadStateChange)="onModelLoadStateChange($event)"
             />
         </ng-template>
     </ngt-canvas>

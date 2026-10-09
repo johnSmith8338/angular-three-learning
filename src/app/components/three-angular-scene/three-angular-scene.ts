@@ -6,6 +6,11 @@ import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
 import { gltfResource } from 'angular-three-soba/loaders';
 
+interface ModelLoadState {
+  isLoading: boolean;
+  error: unknown;
+}
+
 extend({
   Box3,
   Camera,
@@ -43,6 +48,8 @@ export class ThreeAngularScene {
 
   readonly meshSelected = output<Hotspot>();
   readonly meshDeselected = output<void>();
+
+  readonly modelLoadStateChange = output<ModelLoadState>();
 
   private readonly hotspotWorldPosition = new Vector3();
   private readonly hotspotNdcPosition = new Vector3();
@@ -144,6 +151,13 @@ export class ThreeAngularScene {
     effect(() => {
       const focusMode = this.focusMode();
       if (!focusMode && this.isFocusMode) this.exitFocusMode();
+    })
+
+    effect(() => {
+      this.modelLoadStateChange.emit({
+        isLoading: this.gltf.isLoading(),
+        error: this.gltf.error()
+      })
     })
 
     beforeRender((state) => {
@@ -770,5 +784,9 @@ export class ThreeAngularScene {
 
     // меш считается видимым, если у него есть хотябы один видимый материал с ненулевой прозрачностью
     return materials.some(material => material.visible && material.opacity > 0.001);
+  }
+
+  reloadModel() {
+    this.gltf.reload();
   }
 }
