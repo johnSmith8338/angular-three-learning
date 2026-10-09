@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, ElementRef, signal, viewChild, viewChildren } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, signal, viewChild, viewChildren } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
 import { ThreeAngularScene } from '../three-angular-scene/three-angular-scene';
 import { Hotspot } from '../../models/hotspot.interface';
@@ -16,9 +16,14 @@ type ZoomDirection = 'in' | 'out';
   ],
   templateUrl: './three-angular.html',
   styleUrl: './three-angular.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(window:keydown)': 'onWindowKeydown($event)'
+  }
 })
 export class ThreeAngular {
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly hotspotElements = viewChildren<ElementRef<HTMLButtonElement>>('hotspotElement');
   readonly scene = viewChild.required(ThreeAngularScene);
   readonly tooltipOverlays = viewChildren(CdkConnectedOverlay);
@@ -43,6 +48,13 @@ export class ThreeAngular {
     }))
   })
 
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.stopZoom();
+      this.stopTooltipPositionUpdates();
+    })
+  }
+
   onHotspotPointerEnter(hotspot: Hotspot): void {
     this.hoveredHotspotId.set(hotspot.id);
   }
@@ -53,8 +65,7 @@ export class ThreeAngular {
 
   onHotspotClick(hotspot: Hotspot) {
     if (this.selectedHotspotId() === hotspot.id) {
-      this.selectedHotspotId.set(null);
-      this.stopTooltipPositionUpdates();
+      this.closeHotspotTooltip();
       return;
     }
 
@@ -63,8 +74,8 @@ export class ThreeAngular {
   }
 
   onMeshSelected(hotspot: Hotspot): void {
-    this.selectedHotspotId.set(null);
-    this.stopTooltipPositionUpdates();
+    this.closeHotspotTooltip();
+
     this.selectedMeshHotspot.set(hotspot);
     this.focusMode.set(true);
   }
@@ -72,6 +83,7 @@ export class ThreeAngular {
   onMeshDeselected(): void {
     this.selectedMeshHotspot.set(null);
     this.focusMode.set(false);
+    this.hoveredHotspotId.set(null);
   }
 
   startZoom(direction: ZoomDirection, event: PointerEvent) {
@@ -102,7 +114,7 @@ export class ThreeAngular {
   }
 
   private zoomOnce(direction: ZoomDirection) {
-    if (direction === 'in') {
+    if (direction !== 'in') {
       this.scene().zoomIn();
     } else {
       this.scene().zoomOut();
@@ -111,6 +123,20 @@ export class ThreeAngular {
 
   resetCamera() {
     this.scene().resetCamera();
+  }
+
+  onWindowKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Escape') return;
+    if (this.selectedMeshHotspot() !== null) {
+      this.onMeshDeselected();
+      return;
+    }
+    if (this.selectedHotspotId() !== null) this.closeHotspotTooltip();
+  }
+
+  private closeHotspotTooltip() {
+    this.selectedHotspotId.set(null);
+    this.stopTooltipPositionUpdates();
   }
 
   private readonly updateTooltipPosition = () => {

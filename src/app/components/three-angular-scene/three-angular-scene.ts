@@ -683,7 +683,7 @@ export class ThreeAngularScene {
     const controls = this.store.controls() as OrbitControls | undefined;
     if (!controls) return;
 
-    controls.dollyOut(1.05);
+    controls.dollyIn(1.05);
     controls.update();
   }
 
@@ -691,7 +691,7 @@ export class ThreeAngularScene {
     const controls = this.store.controls() as OrbitControls | undefined;
     if (!controls) return;
 
-    controls.dollyIn(1.05);
+    controls.dollyOut(1.05);
     controls.update();
   }
 
