@@ -71,21 +71,16 @@ ngt-canvas {
 }
 
 .html-marker_tooltip {
-    position: absolute;
-    left: 50%;
-    bottom: calc(100% + 12px);
     display: flex;
     flex-direction: column;
     gap: 4px;
     width: max-content;
-    max-width: 240px;
+    max-width: 288px;
     padding: 10px 12px;
     border-radius: 8px;
     background: rgb(20 20 20 / 90%);
     color: white;
-    text-align: left;
     pointer-events: auto;
-    transform: translateX(-50%);
     will-change: opacity;
 
     strong {

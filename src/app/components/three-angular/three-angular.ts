@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, ElementRef, signal, viewC
 import { NgtCanvas } from 'angular-three/dom';
 import { ThreeAngularScene } from '../three-angular-scene/three-angular-scene';
 import { Hotspot } from '../../models/hotspot.interface';
+import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay'
 
 type ZoomDirection = 'in' | 'out';
 
@@ -9,7 +10,9 @@ type ZoomDirection = 'in' | 'out';
   selector: 'app-three-angular',
   imports: [
     NgtCanvas,
-    ThreeAngularScene
+    ThreeAngularScene,
+    CdkConnectedOverlay,
+    CdkOverlayOrigin
   ],
   templateUrl: './three-angular.html',
   styleUrl: './three-angular.scss',
@@ -18,6 +21,7 @@ type ZoomDirection = 'in' | 'out';
 export class ThreeAngular {
   readonly hotspotElements = viewChildren<ElementRef<HTMLButtonElement>>('hotspotElement');
   readonly scene = viewChild.required(ThreeAngularScene);
+  readonly tooltipOverlays = viewChildren(CdkConnectedOverlay);
 
   readonly selectedHotspotId = signal<number | null>(null);
   readonly hoveredHotspotId = signal<number | null>(null);
@@ -26,22 +30,7 @@ export class ThreeAngular {
 
   private zoomTimer: ReturnType<typeof setInterval> | null = null;
 
-  readonly hotspots: Hotspot[] = [
-    {
-      id: 1,
-      title: 'Заголовок 1',
-      description: 'Описание для заголовка 1',
-      meshName: 'camera',
-      anchor: 'top'
-    },
-    {
-      id: 2,
-      title: 'Заголовок 2',
-      description: 'Описание для заголовка 2',
-      meshName: 'tripod',
-      anchor: 'right'
-    },
-  ]
+  private tooltipPositionFrame: number | null = null;
 
   readonly isFocusMode = computed(() => this.selectedMeshHotspot() !== null);
 
@@ -65,13 +54,17 @@ export class ThreeAngular {
   onHotspotClick(hotspot: Hotspot) {
     if (this.selectedHotspotId() === hotspot.id) {
       this.selectedHotspotId.set(null);
+      this.stopTooltipPositionUpdates();
       return;
     }
 
     this.selectedHotspotId.set(hotspot.id);
+    this.startTooltipPositionUpdates();
   }
 
   onMeshSelected(hotspot: Hotspot): void {
+    this.selectedHotspotId.set(null);
+    this.stopTooltipPositionUpdates();
     this.selectedMeshHotspot.set(hotspot);
     this.focusMode.set(true);
   }
@@ -119,4 +112,76 @@ export class ThreeAngular {
   resetCamera() {
     this.scene().resetCamera();
   }
+
+  private readonly updateTooltipPosition = () => {
+    if (this.selectedHotspotId() === null) {
+      this.tooltipPositionFrame = null;
+      return;
+    }
+
+    for (const overlay of this.tooltipOverlays()) {
+      overlay.overlayRef?.updatePosition();
+    }
+
+    this.tooltipPositionFrame = requestAnimationFrame(this.updateTooltipPosition);
+  }
+
+  private startTooltipPositionUpdates() {
+    if (this.tooltipPositionFrame !== null) return;
+    this.tooltipPositionFrame = requestAnimationFrame(this.updateTooltipPosition);
+  }
+
+  private stopTooltipPositionUpdates() {
+    if (this.tooltipPositionFrame === null) return;
+    cancelAnimationFrame(this.tooltipPositionFrame);
+    this.tooltipPositionFrame = null;
+  }
+
+  readonly hotspots: Hotspot[] = [
+    {
+      id: 1,
+      title: 'Заголовок 1',
+      description: 'Описание для заголовка 1',
+      meshName: 'camera',
+      anchor: 'top'
+    },
+    {
+      id: 2,
+      title: 'Заголовок 2',
+      description: 'Описание для заголовка 2',
+      meshName: 'tripod',
+      anchor: 'right'
+    },
+  ]
+
+  readonly tooltipPositions: ConnectedPosition[] = [
+    {
+      originX: 'center',
+      originY: 'top',
+      overlayX: 'center',
+      overlayY: 'bottom',
+      offsetY: -10
+    },
+    {
+      originX: 'center',
+      originY: 'bottom',
+      overlayX: 'center',
+      overlayY: 'top',
+      offsetY: 10
+    },
+    {
+      originX: 'end',
+      originY: 'center',
+      overlayX: 'start',
+      overlayY: 'center',
+      offsetX: 10
+    },
+    {
+      originX: 'start',
+      originY: 'center',
+      overlayX: 'end',
+      overlayY: 'center',
+      offsetX: -10
+    },
+  ]
 }

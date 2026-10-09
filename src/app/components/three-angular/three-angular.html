@@ -20,6 +20,8 @@
     <div class="hotspot-wrapper" [class.hidden]="isFocusMode()">
         @for (hotspot of hotspots; track hotspot.id) {
             <button #hotspotElement class="html-marker"
+                cdkOverlayOrigin
+                #tooltipOrigin="cdkOverlayOrigin"
                 [class.selected]="selectedHotspotId()===hotspot.id"
                 [class.hovered]="hoveredHotspotId()===hotspot.id"
                 [attr.data-hotspot-id]="hotspot.id"
@@ -29,13 +31,20 @@
                 (pointerleave)="onHotspotPointerLeave()"
             >
                 <span class="html-marker_dot"></span>
-                @if (selectedHotspotId()===hotspot.id) {
-                    <span class="html-marker_tooltip">
-                        <strong class="html-marker_label">{{hotspot.title}}</strong>
-                        <span>{{hotspot.description}}</span>
-                    </span>
-                }
             </button>
+
+            <ng-template cdkConnectedOverlay
+                [cdkConnectedOverlayOrigin]="tooltipOrigin"
+                [cdkConnectedOverlayOpen]="selectedHotspotId()===hotspot.id"
+                [cdkConnectedOverlayPositions]="tooltipPositions"
+                [cdkConnectedOverlayPush]="true"
+                [cdkConnectedOverlayViewportMargin]="16"
+            >
+                <span class="html-marker_tooltip">
+                    <strong class="html-marker_label">{{hotspot.title}}</strong>
+                    <span>{{hotspot.description}}</span>
+                </span>
+            </ng-template>
         }
     </div>
 
