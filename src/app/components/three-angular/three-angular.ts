@@ -44,6 +44,8 @@ export class ThreeAngular {
   private previousPinchDistance = 0;
   private pinchActive = false;
 
+  readonly is3dMode = signal(false);
+
   readonly isFocusMode = computed(() => this.selectedMeshHotspot() !== null);
 
   readonly hotspotElementMap = computed(() => {
@@ -185,6 +187,8 @@ export class ThreeAngular {
   onScenePointerDown(event: PointerEvent) {
     if (!(event.target instanceof HTMLCanvasElement)) return;
 
+    this.scene().onHorizontalPointerDown(event);
+
     this.activePointers.set(event.pointerId, {
       x: event.clientX,
       y: event.clientY
@@ -205,6 +209,8 @@ export class ThreeAngular {
     pointer.x = event.clientX;
     pointer.y = event.clientY;
 
+    this.scene().onHorizontalPointerMove(event);
+
     if (!this.pinchActive || this.activePointers.size < 2) return;
 
     const distance = this.getPinchDistance();
@@ -218,10 +224,21 @@ export class ThreeAngular {
   }
 
   onScenePointerUp(event: PointerEvent) {
+    this.scene().onHorizontalPointerUp(event);
+
     this.activePointers.delete(event.pointerId);
 
-    if (!this.pinchActive || this.activePointers.size >= 2) return;
+    if (this.activePointers.size < 2) {
+      this.pinchActive = false;
+      this.previousPinchDistance = 0;
+      this.scene().setPinchActive(false);
+    }
+  }
 
+  onScenePointerCancel(event: PointerEvent): void {
+    this.scene().onHorizontalPointerUp(event);
+
+    this.activePointers.clear();
     this.pinchActive = false;
     this.previousPinchDistance = 0;
 
@@ -238,6 +255,10 @@ export class ThreeAngular {
       second.x - first.x,
       second.y - first.y
     )
+  }
+
+  toggle3dMode() {
+    this.is3dMode.update(enabled => !enabled);
   }
 
   readonly hotspots: Hotspot[] = [

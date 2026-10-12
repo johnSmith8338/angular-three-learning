@@ -16,7 +16,7 @@ ngt-canvas {
     height: 100%;
 
     // убираем прокрутку страницы на тач-устройствах
-    touch-action: none;
+    // touch-action: none;
 }
 
 .hotspot-wrapper {
@@ -155,6 +155,10 @@ ngt-canvas {
     user-select: none;
 }
 
+.mode-button {
+    display: none;
+}
+
 .scene-status {
     position: absolute;
     inset: 0;
@@ -195,6 +199,14 @@ ngt-canvas {
 }
 
 @media (max-width: 600px) {
+    ngt-canvas {
+        touch-action: pan-y !important;
+    }
+
+    .scene-container.is-3d-mode ngt-canvas {
+        touch-action: none !important;
+    }
+
     .html-marker {
         // Увеличиваем область нажатия, не увеличивая саму точку.
         width: 32px;
@@ -259,6 +271,15 @@ ngt-canvas {
         top: 12px;
         right: 12px;
         gap: 10px;
+
+    }
+
+    .zoom-controls.is-3d-mode {
+
+        .zoom-in-button,
+        .zoom-out-button {
+            display: none;
+        }
     }
 
     .zoom-button {
@@ -266,6 +287,12 @@ ngt-canvas {
         height: 48px;
         font-size: 25px;
         touch-action: manipulation;
+    }
+
+    .mode-button {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
     }
 
     .scene-status {

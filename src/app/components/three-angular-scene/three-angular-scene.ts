@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, DestroyRef, effect, ElementRef, inject, input, output, PLATFORM_ID, signal, viewChild } from '@angular/core';
 import { beforeRender, extend, injectStore, NgtArgs, NgtThreeEvent } from 'angular-three';
 import { Box3, Camera, Color, Group, Mesh, MeshStandardMaterial, Object3D, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
 import { gltfResource } from 'angular-three-soba/loaders';
+import { isPlatformBrowser } from '@angular/common';
 
 interface ModelLoadState {
   isLoading: boolean;
@@ -36,6 +37,9 @@ extend({
 export class ThreeAngularScene {
   private readonly store = injectStore();
 
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
+
   private readonly modelRoot = viewChild.required<ElementRef<Group>>('modelRoot');
   private readonly orbitControls = viewChild.required('orbitControls');
 
@@ -45,6 +49,7 @@ export class ThreeAngularScene {
   readonly hotspotElements = input<ReadonlyMap<number, HTMLButtonElement>>(new Map());
 
   readonly focusMode = input(false);
+  readonly is3dMode = input(false);
 
   readonly meshSelected = output<Hotspot>();
   readonly meshDeselected = output<void>();
@@ -127,7 +132,33 @@ export class ThreeAngularScene {
 
   private controlsEnabledBeforePinch = true;
 
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchPointerId: number | null = null;
+  private touchDragging = false;
+
+  private readonly isMobile = signal(false);
+
+  private horizontalVelocity = 0;
+  private horizontalAnimationFrame: number | null = null;
+
+  private readonly horizontalDamping = 0.96;
+  private readonly horizontalStopThreshold = 0.0001;
+
   constructor() {
+    this.updateMobileState();
+
+    if (typeof window !== 'undefined') {
+      const media = window.matchMedia('(max-width:600px)');
+      const onChange = () => this.updateMobileState();
+
+      media.addEventListener('change', onChange);
+
+      inject(DestroyRef).onDestroy(() => {
+        media.removeEventListener('change', onChange);
+      })
+    }
+
     beforeRender(({ camera, size }) => {
       this.updateTargetAnimation();
       this.updateCameraAnimation();
@@ -160,6 +191,15 @@ export class ThreeAngularScene {
         isLoading: this.gltf.isLoading(),
         error: this.gltf.error()
       })
+    })
+
+    effect(() => {
+      const controls = this.store.controls() as OrbitControls | undefined;
+      if (!controls) return;
+
+      controls.enableRotate = !this.isMobile() || this.is3dMode();
+
+      if (this.is3dMode()) this.resetHorizontalDamping();
     })
 
     beforeRender((state) => {
@@ -763,6 +803,8 @@ export class ThreeAngularScene {
   }
 
   resetCamera() {
+    this.resetHorizontalDamping();
+
     if (this.isFocusMode) {
       this.exitFocusMode();
       this.meshDeselected.emit();
@@ -815,4 +857,146 @@ export class ThreeAngularScene {
       controls.dollyIn(1 / distanceRatio);
     }
   }
+
+  onHorizontalPointerDown(event: PointerEvent) {
+    if (!this.isBrowser || window.matchMedia('(min-width:601px)').matches) return;
+    if (this.is3dMode()) return;
+    if (event.pointerType === 'mouse') return;
+
+    this.touchPointerId = event.pointerId;
+    this.touchStartX = event.clientX;
+    this.touchStartY = event.clientY;
+    this.touchDragging = false;
+  }
+
+  onHorizontalPointerMove(event: PointerEvent) {
+    if (this.touchPointerId !== event.pointerId) return;
+    if (this.is3dMode()) return;
+
+    const deltaX = event.clientX - this.touchStartX;
+    const deltaY = event.clientY - this.touchStartY;
+
+    if (!this.touchDragging) {
+      // Начинаем вращение, только когда жест явно горизонтальный
+      if (Math.abs(deltaX) < 4 && Math.abs(deltaY) < 4) return;
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        this.touchPointerId = null;
+        return;
+      }
+
+      this.touchDragging = true;
+    }
+
+    this.rotateHorizontally(deltaX);
+
+    this.touchStartX = event.clientX;
+    this.touchStartY = event.clientY;
+  }
+
+  onHorizontalPointerUp(event: PointerEvent) {
+    if (this.touchPointerId !== event.pointerId) return;
+
+    this.touchPointerId = null;
+    this.touchDragging = false;
+  }
+
+  private rotateHorizontally(deltaX: number) {
+    this.horizontalVelocity = -2 * Math.PI * deltaX / window.innerWidth;
+
+    this.startHorizontalAnimation();
+  }
+
+  private startHorizontalAnimation() {
+    if (this.horizontalAnimationFrame !== null) return;
+
+    const animate = () => {
+      const controls = this.store.controls() as OrbitControls | undefined;
+      if (!controls) {
+        this.horizontalAnimationFrame = null;
+        return;
+      }
+      if (Math.abs(this.horizontalVelocity) < this.horizontalStopThreshold) {
+        this.horizontalVelocity = 0;
+        this.horizontalAnimationFrame = null;
+        return;
+      }
+
+      const offset = controls.object.position.clone().sub(controls.target);
+
+      offset.applyAxisAngle(controls.object.up, this.horizontalVelocity);
+
+      controls.object.position.copy(controls.target).add(offset);
+
+      controls.object.lookAt(controls.target);
+      controls.update();
+
+      this.horizontalVelocity *= this.horizontalDamping;
+      this.horizontalAnimationFrame = requestAnimationFrame(animate);
+    }
+
+    this.horizontalAnimationFrame = requestAnimationFrame(animate);
+  }
+
+  resetHorizontalDamping() {
+    this.horizontalVelocity = 0;
+
+    if (this.horizontalAnimationFrame !== null) {
+      cancelAnimationFrame(this.horizontalAnimationFrame);
+      this.horizontalAnimationFrame = null;
+    }
+  }
+
+  private updateMobileState() {
+    if (typeof window === 'undefined') return;
+
+    this.isMobile.set(window.matchMedia('(max-width:600px)').matches);
+  }
+
+
+
+
+  private inspectedScene: object | null = null;
+
+  private readonly inspectModelEffect = effect(() => {
+    const gltf = this.gltf.value();
+
+    if (!gltf || gltf.scene === this.inspectedScene) {
+      return;
+    }
+
+    this.inspectedScene = gltf.scene;
+
+    console.group('Antique camera: materials');
+
+    gltf.scene.traverse(object => {
+      if (!(object instanceof Mesh)) return;
+
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+
+      for (const material of materials) {
+        console.log({
+          mesh: object.name,
+          material: material.name,
+          type: material.type,
+          color: material instanceof MeshStandardMaterial
+            ? `#${material.color.getHexString()}`
+            : 'not a standard PBR material',
+          metalness: material instanceof MeshStandardMaterial
+            ? material.metalness
+            : null,
+          roughness: material instanceof MeshStandardMaterial
+            ? material.roughness
+            : null,
+          hasColorMap: 'map' in material && material.map !== null,
+          hasNormalMap: 'normalMap' in material && material.normalMap !== null,
+          hasMetalnessMap: 'metalnessMap' in material && material.metalnessMap !== null,
+          hasRoughnessMap: 'roughnessMap' in material && material.roughnessMap !== null,
+        });
+      }
+    });
+
+    console.groupEnd();
+  });
 }

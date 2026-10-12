@@ -1,8 +1,8 @@
-<div class="scene-container"
+<div class="scene-container" [class.is-3d-mode]="is3dMode()"
     (pointerdown)="onScenePointerDown($event)"
     (pointermove)="onScenePointerMove($event)"
     (pointerup)="onScenePointerUp($event)"
-    (pointercancel)="onScenePointerUp($event)"
+    (pointercancel)="onScenePointerCancel($event)"
 >
     @if (modelLoading()) {
         <div class="scene-status" role="status" aria-live="polite">
@@ -26,6 +26,7 @@
                 (meshDeselected)="onMeshDeselected()"
                 [focusMode]="focusMode()"
                 (modelLoadStateChange)="onModelLoadStateChange($event)"
+                [is3dMode]="is3dMode()"
             />
         </ng-template>
     </ngt-canvas>
@@ -76,8 +77,15 @@
         </aside>
     }
 
-    <div class="zoom-controls">
-        <button type="button" class="zoom-button"
+    <div class="zoom-controls" [class.is-3d-mode]="is3dMode()">
+        <button type="button"
+            class="zoom-button mode-button"
+            [attr.aria-pressed]="is3dMode()"
+            (click)="toggle3dMode()"
+        >
+            {{is3dMode()?'2D':'3D'}}
+        </button>
+        <button type="button" class="zoom-button zoom-in-button"
             aria-label="увеличить"
             (pointerdown)="startZoom('in',$event)"
             (pointerup)="stopZoom($event)"
@@ -86,7 +94,7 @@
         >
             +
         </button>
-        <button type="button" class="zoom-button"
+        <button type="button" class="zoom-button zoom-out-button"
             aria-label="уменьшить"
             (pointerdown)="startZoom('out',$event)"
             (pointerup)="stopZoom($event)"
@@ -95,7 +103,7 @@
         >
             -
         </button>
-        <button type="button" class="zoom-button"
+        <button type="button" class="zoom-button reset-button"
             aria-label="сбросить положение камеры"
             title="сбросить положение камеры"
             (click)="resetCamera()"
