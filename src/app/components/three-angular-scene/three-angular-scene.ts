@@ -125,6 +125,8 @@ export class ThreeAngularScene {
 
   private readonly panCorrection = new Vector3();
 
+  private controlsEnabledBeforePinch = true;
+
   constructor() {
     beforeRender(({ camera, size }) => {
       this.updateTargetAnimation();
@@ -788,5 +790,29 @@ export class ThreeAngularScene {
 
   reloadModel() {
     this.gltf.reload();
+  }
+
+  setPinchActive(active: boolean) {
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls) return;
+
+    if (active) {
+      this.controlsEnabledBeforePinch = controls.enabled;
+      controls.enabled = false;
+      return;
+    }
+
+    controls.enabled = this.controlsEnabledBeforePinch;
+  }
+
+  applyPinchZoom(distanceRatio: number) {
+    const controls = this.store.controls() as OrbitControls | undefined;
+    if (!controls || distanceRatio <= 0) return;
+
+    if (distanceRatio > 1) {
+      controls.dollyOut(distanceRatio);
+    } else if (distanceRatio < 1) {
+      controls.dollyIn(1 / distanceRatio);
+    }
   }
 }

@@ -40,6 +40,10 @@ export class ThreeAngular {
 
   private tooltipPositionFrame: number | null = null;
 
+  private readonly activePointers = new Map<number, { x: number; y: number }>();
+  private previousPinchDistance = 0;
+  private pinchActive = false;
+
   readonly isFocusMode = computed(() => this.selectedMeshHotspot() !== null);
 
   readonly hotspotElementMap = computed(() => {
@@ -176,6 +180,64 @@ export class ThreeAngular {
 
   retryModelLoad() {
     this.scene().reloadModel();
+  }
+
+  onScenePointerDown(event: PointerEvent) {
+    if (!(event.target instanceof HTMLCanvasElement)) return;
+
+    this.activePointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY
+    })
+
+    if (this.activePointers.size < 2 || this.pinchActive) return;
+
+    this.pinchActive = true;
+    this.previousPinchDistance = this.getPinchDistance();
+
+    this.scene().setPinchActive(true);
+  }
+
+  onScenePointerMove(event: PointerEvent) {
+    const pointer = this.activePointers.get(event.pointerId);
+    if (!pointer) return;
+
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+
+    if (!this.pinchActive || this.activePointers.size < 2) return;
+
+    const distance = this.getPinchDistance();
+
+    if (this.previousPinchDistance > 0 && distance > 0) {
+      const ratio = distance / this.previousPinchDistance;
+      this.scene().applyPinchZoom(ratio);
+    }
+
+    this.previousPinchDistance = distance;
+  }
+
+  onScenePointerUp(event: PointerEvent) {
+    this.activePointers.delete(event.pointerId);
+
+    if (!this.pinchActive || this.activePointers.size >= 2) return;
+
+    this.pinchActive = false;
+    this.previousPinchDistance = 0;
+
+    this.scene().setPinchActive(false);
+  }
+
+  private getPinchDistance(): number {
+    const pointers = [...this.activePointers.values()];
+    if (pointers.length < 2) return 0;
+
+    const [first, second] = pointers;
+
+    return Math.hypot(
+      second.x - first.x,
+      second.y - first.y
+    )
   }
 
   readonly hotspots: Hotspot[] = [

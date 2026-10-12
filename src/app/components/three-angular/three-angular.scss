@@ -193,3 +193,82 @@ ngt-canvas {
         transform: rotate(360deg);
     }
 }
+
+@media (max-width: 600px) {
+    .html-marker {
+        // Увеличиваем область нажатия, не увеличивая саму точку.
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+    }
+
+    .html-marker_dot {
+        width: 12px;
+        height: 12px;
+    }
+
+    .html-marker_tooltip {
+        // Не позволяем подсказке выйти за пределы узкого экрана.
+        width: max-content;
+        max-width: min(260px, calc(100vw - 32px));
+        padding: 12px;
+        box-sizing: border-box;
+        overflow-wrap: anywhere;
+    }
+
+    .html-marker_tooltip strong {
+        font-size: 14px;
+        line-height: 1.35;
+    }
+
+    .html-marker_tooltip span {
+        font-size: 13px;
+        line-height: 1.45;
+    }
+
+    .focus-panel {
+        // Панель располагается снизу и почти на всю ширину.
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        width: auto;
+        box-sizing: border-box;
+        padding: 16px 48px 16px 16px;
+        border-radius: 12px;
+    }
+
+    .focus-panel_title {
+        font-size: 17px;
+        line-height: 1.35;
+    }
+
+    .focus-panel_description {
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .focus-panel_close {
+        top: 8px;
+        right: 8px;
+        width: 36px;
+        height: 36px;
+    }
+
+    .zoom-controls {
+        top: 12px;
+        right: 12px;
+        gap: 10px;
+    }
+
+    .zoom-button {
+        width: 48px;
+        height: 48px;
+        font-size: 25px;
+        touch-action: manipulation;
+    }
+
+    .scene-status {
+        padding: 20px;
+    }
+}

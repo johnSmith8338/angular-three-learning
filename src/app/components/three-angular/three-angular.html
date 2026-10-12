@@ -1,4 +1,9 @@
-<div class="scene-container">
+<div class="scene-container"
+    (pointerdown)="onScenePointerDown($event)"
+    (pointermove)="onScenePointerMove($event)"
+    (pointerup)="onScenePointerUp($event)"
+    (pointercancel)="onScenePointerUp($event)"
+>
     @if (modelLoading()) {
         <div class="scene-status" role="status" aria-live="polite">
             <span class="scene-status_spinner"></span>
