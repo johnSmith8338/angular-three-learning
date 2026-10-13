@@ -1,6 +1,12 @@
 <!-- <app-three-scene /> -->
 
-<app-three-angular />
+@defer (on viewport) {
+    <app-three-angular />
+}@placeholder {
+    <div class="scene-placeholder">
+        Загрузка 3Д-сцены...
+    </div>
+}
 
 <article>
     <h2>Title</h2>

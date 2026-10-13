@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, DestroyRef, effect, ElementRef, inject, input, output, PLATFORM_ID, signal, viewChild } from '@angular/core';
 import { beforeRender, extend, injectStore, NgtArgs, NgtThreeEvent } from 'angular-three';
-import { Box3, Camera, Color, Group, Mesh, MeshStandardMaterial, Object3D, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from 'three';
+import { Box3, Camera, Color, Group, Mesh, MeshStandardMaterial, Object3D, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3, Texture, EquirectangularReflectionMapping, CanvasTexture } from 'three';
 import { Hotspot } from '../../models/hotspot.interface';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OrbitControls } from 'three-stdlib';
 import { gltfResource } from 'angular-three-soba/loaders';
 import { isPlatformBrowser } from '@angular/common';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 
 interface ModelLoadState {
   isLoading: boolean;
@@ -36,6 +37,37 @@ extend({
 })
 export class ThreeAngularScene {
   private readonly store = injectStore();
+
+  private readonly environmentEffect = effect((onCleanup) => {
+    const scene = this.store.scene();
+    if (!this.isBrowser) return;
+
+    let cancelled = false;
+    let environmentTexture: Texture | null = null;
+    const loader = new HDRLoader();
+
+    loader.load('/assets/studio.hdr', (texture) => {
+      if (cancelled) {
+        texture.dispose();
+        return;
+      }
+
+      texture.mapping = EquirectangularReflectionMapping;
+      scene.environment = texture;
+      scene.environmentIntensity = 0.65;
+      environmentTexture = texture;
+    },
+      undefined, (error) => {
+        if (!cancelled) console.error('Не удалось загрузить HDRI: ', error)
+      }
+    )
+
+    onCleanup(() => {
+      cancelled = true;
+      if (scene.environment === environmentTexture) scene.environment = null;
+      environmentTexture?.dispose();
+    })
+  })
 
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
@@ -951,52 +983,4 @@ export class ThreeAngularScene {
 
     this.isMobile.set(window.matchMedia('(max-width:600px)').matches);
   }
-
-
-
-
-  private inspectedScene: object | null = null;
-
-  private readonly inspectModelEffect = effect(() => {
-    const gltf = this.gltf.value();
-
-    if (!gltf || gltf.scene === this.inspectedScene) {
-      return;
-    }
-
-    this.inspectedScene = gltf.scene;
-
-    console.group('Antique camera: materials');
-
-    gltf.scene.traverse(object => {
-      if (!(object instanceof Mesh)) return;
-
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : [object.material];
-
-      for (const material of materials) {
-        console.log({
-          mesh: object.name,
-          material: material.name,
-          type: material.type,
-          color: material instanceof MeshStandardMaterial
-            ? `#${material.color.getHexString()}`
-            : 'not a standard PBR material',
-          metalness: material instanceof MeshStandardMaterial
-            ? material.metalness
-            : null,
-          roughness: material instanceof MeshStandardMaterial
-            ? material.roughness
-            : null,
-          hasColorMap: 'map' in material && material.map !== null,
-          hasNormalMap: 'normalMap' in material && material.normalMap !== null,
-          hasMetalnessMap: 'metalnessMap' in material && material.metalnessMap !== null,
-          hasRoughnessMap: 'roughnessMap' in material && material.roughnessMap !== null,
-        });
-      }
-    });
-
-    console.groupEnd();
-  });
 }
