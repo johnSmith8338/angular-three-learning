@@ -4,7 +4,7 @@
     (pointerup)="onScenePointerUp($event)"
     (pointercancel)="onScenePointerCancel($event)"
 >
-    @if (modelLoading()) {
+    <!-- @if (modelLoading()) {
         <div class="scene-status" role="status" aria-live="polite">
             <span class="scene-status_spinner"></span>
             <span>Загрузка 3D-модели...</span>
@@ -15,7 +15,7 @@
             <span>Проверьте соединение и попробуйте еще раз</span>
             <button type="button" (click)="scene().gltf.reload()">Повторить</button>
         </div>
-    }
+    } -->
 
     <ngt-canvas [camera]="{position:[0,0,5], fov:75}">
         <ng-template canvasContent>

@@ -1,0 +1,19 @@
+<section class="hero">
+    <div class="hero_placeholder"
+        [class.hero_placeholder-hidden]="sceneReady()"
+        [attr.aria-hidden]="sceneReady()"
+    >
+        <div class="hero_content">
+            <p class="hero_eyebrow">интерактивная 3D-модель</p>
+            <h2>Знакомьтесь с продуктом</h2>
+
+            @if (loadFailed()) {
+                <p role="status">Не удалось загрузить 3D-модель. Вы можете продолжить просмотр сайта.</p>
+            }@else if (!sceneReady()) {
+                <p role="status">Подготавливаем интерактивную сцену...</p>
+            }
+        </div>
+    </div>
+
+    <ng-container #sceneHost />
+</section>

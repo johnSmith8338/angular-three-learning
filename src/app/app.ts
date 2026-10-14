@@ -1,12 +1,12 @@
 import { Component, signal } from '@angular/core';
 // import { ThreeScene } from './components/three-scene/three-scene';
-import { ThreeAngular } from './components/three-angular/three-angular';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   imports: [
-    // ThreeScene, 
-    ThreeAngular
+    // ThreeScene,
+    RouterOutlet
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'

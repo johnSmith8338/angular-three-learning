@@ -46,7 +46,7 @@ export class ThreeAngularScene {
     let environmentTexture: Texture | null = null;
     const loader = new HDRLoader();
 
-    loader.load('/assets/studio.hdr', (texture) => {
+    loader.load('assets/studio.hdr', (texture) => {
       if (cancelled) {
         texture.dispose();
         return;
